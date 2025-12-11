@@ -16,7 +16,7 @@
 
         /* 玻璃面板 */
         .glass-panel {
-            background: rgba(20, 25, 40, 0.8); /* 稍微調亮一點點底色 */
+            background: rgba(20, 25, 40, 0.8);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 24px;
@@ -68,7 +68,12 @@
             <p class="text-white/60 text-[10px] mt-1 tracking-[0.4em] uppercase">Virtual Space Tour</p>
         </div>
 
-        <div id="infoModal" class="glass-panel absolute top-1/2 left-4 md:left-12 -translate-y-1/2 w-[90%] max-w-[360px] p-8 opacity-0 translate-x-[-40px] pointer-events-none">
+        <div id="infoModal" class="glass-panel absolute top-1/2 left-4 md:left-12 -translate-y-1/2 w-[90%] max-w-[360px] p-8 opacity-0 translate-x-[-40px] pointer-events-none transition-all duration-500">
+            
+            <button id="closeBtn" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/20 hover:text-white transition-all interactive">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+
             <div class="absolute -top-4 -right-2 text-[100px] font-bold text-white/5 pointer-events-none select-none" id="mBgNum" style="font-family: Impact;">01</div>
             
             <h2 id="mName" class="text-4xl font-bold text-white mb-1 drop-shadow-md">PLANET</h2>
@@ -106,7 +111,7 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         // ==========================================
-        // 1. 資料設定 (透視排列)
+        // 1. 資料設定
         // ==========================================
         const planetsData = [
             { 
@@ -157,9 +162,6 @@
         // 2. 場景與相機
         // ==========================================
         const scene = new THREE.Scene();
-        // 移除霧氣，保持星空清晰
-        // scene.fog = new THREE.FogExp2(0x000000, 0.002); 
-
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -174,32 +176,22 @@
         controls.maxDistance = 200;
 
         // ==========================================
-        // 3. 建立簡單星空 (解決背景問題)
+        // 3. 簡單星空 (維持全黑+星星)
         // ==========================================
         function createSimpleStarField() {
             const geometry = new THREE.BufferGeometry();
             const vertices = [];
-            
-            // 隨機產生 5000 個點
             for (let i = 0; i < 5000; i++) {
                 vertices.push(
-                    THREE.MathUtils.randFloatSpread(1000), // X (-500 ~ 500)
-                    THREE.MathUtils.randFloatSpread(1000), // Y
-                    THREE.MathUtils.randFloatSpread(1000)  // Z
+                    THREE.MathUtils.randFloatSpread(1000), 
+                    THREE.MathUtils.randFloatSpread(1000), 
+                    THREE.MathUtils.randFloatSpread(1000)
                 );
             }
-            
             geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            
-            // 使用 PointsMaterial 建立簡單的白色點
             const material = new THREE.PointsMaterial({
-                color: 0xffffff,
-                size: 0.7, // 星星大小
-                transparent: true,
-                opacity: 0.8,
-                sizeAttenuation: true // 距離越遠看起來越小
+                color: 0xffffff, size: 0.7, transparent: true, opacity: 0.8, sizeAttenuation: true
             });
-            
             const stars = new THREE.Points(geometry, material);
             scene.add(stars);
         }
@@ -209,11 +201,9 @@
         const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
         sunLight.position.set(-50, 30, 50);
         scene.add(sunLight);
-        
         const fillLight = new THREE.DirectionalLight(0xccccff, 0.4);
         fillLight.position.set(50, 0, -50);
         scene.add(fillLight);
-
         const ambientLight = new THREE.AmbientLight(0x222222, 1);
         scene.add(ambientLight);
 
@@ -232,7 +222,6 @@
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(data.pos, 0, data.zOffset);
             
-            // 土星環
             if(data.ring) {
                 const ringGeo = new THREE.RingGeometry(data.size * 1.4, data.size * 2.6, 64);
                 const ringMat = new THREE.MeshStandardMaterial({
@@ -251,25 +240,22 @@
                 mesh.rotation.z = Math.PI / 8;
                 mesh.rotation.x = Math.PI / 8;
             }
-
             scene.add(mesh);
             planetMeshes.push(mesh);
         });
 
         // ==========================================
-        // 5. 運鏡與聚焦 (解決聚焦大小問題)
+        // 5. 運鏡 (維持 5倍距離)
         // ==========================================
         function flyToPlanet(index) {
             const targetPlanet = planetMeshes[index];
             const data = planetsData[index];
 
+            // 飛行開始時，先關閉視窗
             toggleModal(false);
 
-            // *** 關鍵修改：拉遠攝影機距離 ***
-            // 距離改為星球大小的 5.0 倍 (之前是 2.5 倍，太近了)
+            // 距離: 5.0 倍
             const dist = data.size * 5.0; 
-            
-            // 稍微偏一點點角度，比較有立體感，但幾乎是正對
             const offsetX = data.size * 0.2;
             
             const targetPos = { 
@@ -286,8 +272,7 @@
                 })
                 .onComplete(() => {
                     updateModalContent(index);
-                    toggleModal(true);
-                    // 設定最小縮放距離，防止使用者拉太近
+                    toggleModal(true); // 飛行結束開啟視窗
                     controls.minDistance = data.size * 2.5;
                 })
                 .start();
@@ -303,6 +288,7 @@
         // ==========================================
         const modal = document.getElementById('infoModal');
         const menuContainer = document.getElementById('menuContainer');
+        const closeBtn = document.getElementById('closeBtn'); // [NEW] 取得關閉按鈕
 
         function updateModalContent(index) {
             const data = planetsData[index];
@@ -316,13 +302,22 @@
 
         function toggleModal(show) {
             if(show) {
-                modal.classList.remove('opacity-0', 'translate-x-[-40px]');
-                modal.classList.add('opacity-100', 'translate-x-0');
+                // 顯示：加上 pointer-events-auto 讓裡面的按鈕可點
+                modal.classList.remove('opacity-0', 'translate-x-[-40px]', 'pointer-events-none');
+                modal.classList.add('opacity-100', 'translate-x-0', 'pointer-events-auto');
             } else {
-                modal.classList.add('opacity-0', 'translate-x-[-40px]');
-                modal.classList.remove('opacity-100', 'translate-x-0');
+                // 隱藏：加上 pointer-events-none 防止誤觸
+                modal.classList.add('opacity-0', 'translate-x-[-40px]', 'pointer-events-none');
+                modal.classList.remove('opacity-100', 'translate-x-0', 'pointer-events-auto');
             }
         }
+
+        // [NEW] 關閉按鈕監聽事件
+        closeBtn.addEventListener('click', (e) => {
+            // 阻止事件冒泡，以免觸發其他點擊
+            e.stopPropagation();
+            toggleModal(false);
+        });
 
         planetsData.forEach((p, i) => {
             const btn = document.createElement('div');
@@ -351,7 +346,6 @@
             TWEEN.update(time);
             controls.update();
             planetMeshes.forEach(m => m.rotation.y += 0.002);
-            // 背景不轉動，保持靜謐感
             renderer.render(scene, camera);
         }
         animate();
