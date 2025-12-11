@@ -1,536 +1,398 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>WebXR AR Planet Placer (FBX Fixed)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; }
-    
-    #canvas3d { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; }
-    
-    .hud-layer { position: fixed; z-index: 20; pointer-events: none; }
-    .hud-layer > * { pointer-events: auto; }
-    
-    .planet-icon { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0; cursor: pointer; position: relative; }
-    .planet-icon.active { transform: scale(1.3); box-shadow: 0 0 20px rgba(0, 240, 255, 0.6); border-color: #00F0FF !important; }
-    
-    .selection-ring {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 80px; height: 80px; border: 2px solid rgba(0, 240, 255, 0.8);
-      border-radius: 50%; pointer-events: none; animation: pulse 2s ease-in-out infinite;
-      box-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
-    }
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
-    }
-    
-    .scroll-container { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; }
-    .scroll-container::-webkit-scrollbar { display: none; }
-    
-    .glass-panel { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
-    
-    .info-modal { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-height: 80vh; overflow-y: auto; }
-    .info-modal.hidden { opacity: 0; transform: translate(-50%, -50%) translateY(-20px) scale(0.95); pointer-events: none; }
-    .info-modal.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    <title>WebXR AR Planet Placer (Official Structure)</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
+        
+        /* 讓 Three.js 的按鈕自動置中與美化 */
+        #ARButton {
+            position: absolute !important;
+            bottom: 20px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 999 !important;
+            width: auto !important;
+            padding: 12px 24px !important;
+            border-radius: 20px !important;
+            font-weight: bold !important;
+        }
 
-    #ar-button {
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100;
-      padding: 20px 40px; font-size: 18px; font-weight: bold;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white; border: none; border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4); cursor: pointer; transition: all 0.3s ease;
-    }
-    #ar-button:hover { transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 15px 50px rgba(102, 126, 234, 0.6); }
-    #ar-button.hidden { display: none; }
+        /* UI 樣式保留 */
+        .hud-ui { pointer-events: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; }
+        .hud-ui > * { pointer-events: auto; }
 
-    #status-message {
-      position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 99;
-      padding: 12px 24px; background: rgba(0, 0, 0, 0.7); color: white;
-      border-radius: 8px; font-size: 14px; transition: opacity 0.3s;
-    }
-    #status-message.hidden { opacity: 0; pointer-events: none; }
-  </style>
+        .planet-icon { 
+            width: 60px; height: 60px; border-radius: 50%; 
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.3s ease; cursor: pointer; flex-shrink: 0;
+            background-size: cover; background-position: center;
+        }
+        .planet-icon.active { 
+            transform: scale(1.2); border-color: #00F0FF; 
+            box-shadow: 0 0 15px #00F0FF; 
+        }
+
+        .scroll-container { 
+            overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; 
+            display: flex; gap: 20px; padding: 0 50vw; /* Center first item */
+            align-items: center; height: 100%;
+        }
+        .scroll-container::-webkit-scrollbar { display: none; }
+
+        .glass-panel {
+            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px);
+            border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* 狀態訊息 */
+        #status {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;
+            color: white; font-size: 14px; display: none; z-index: 200;
+        }
+    </style>
 </head>
 <body>
-  
-  <canvas id="canvas3d"></canvas>
 
-  <button id="ar-button">
-    <i class="fas fa-vr-cardboard mr-2"></i>Start AR Experience
-  </button>
+    <div id="overlay-content" class="hud-ui">
+        <div id="status">Ready</div>
 
-  <div id="status-message" class="hidden"></div>
-  
-  <div id="hud" class="hud-layer inset-0 w-full h-full hidden">
-    
-    <div id="infoModal" class="info-modal fixed top-1/2 left-1/2 w-[90%] max-w-[500px] glass-panel rounded-2xl p-5 z-30 visible">
-      <button id="closeInfo" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
-        <i class="fas fa-times text-white/70 hover:text-white"></i>
-      </button>
-      
-      <div class="pr-8">
-        <h2 id="modalTitle" class="text-2xl font-bold text-white mb-3 tracking-wide"></h2>
-        <p id="modalDescription" class="text-white/80 text-sm leading-relaxed"></p>
-      </div>
-      
-      <div class="mt-4 flex gap-2">
-        <span id="modalTag1" class="px-3 py-1 bg-cyan-500/20 border border-cyan-500/40 rounded-full text-cyan-300 text-xs font-semibold"></span>
-        <span id="modalTag2" class="px-3 py-1 bg-purple-500/20 border border-purple-500/40 rounded-full text-purple-300 text-xs font-semibold"></span>
-      </div>
+        <div id="infoBox" class="glass-panel absolute top-10 left-4 right-4 hidden transition-opacity duration-300">
+             <h2 id="pName" class="text-white text-xl font-bold">Planet</h2>
+             <p id="pDesc" class="text-gray-300 text-sm mt-1">Description</p>
+        </div>
+
+        <div class="absolute bottom-0 left-0 w-full h-32 pb-8 bg-gradient-to-t from-black/80 to-transparent">
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-lg tracking-widest pointer-events-none" id="currentPlanetName">EARTH</div>
+            <div id="carousel" class="scroll-container">
+                </div>
+        </div>
+        
+        <div class="absolute bottom-32 right-4 flex flex-col gap-3">
+             <button id="resetBtn" class="w-12 h-12 bg-white/10 rounded-full text-white backdrop-blur-md border border-white/20">
+                <i class="fas fa-trash"></i>
+             </button>
+        </div>
     </div>
-    
-    <div class="absolute bottom-0 left-0 w-full pb-8 z-20">
-      <div class="relative w-full h-32">
-        <div class="selection-ring"></div>
-        <div id="planetCarousel" class="scroll-container flex items-center h-full px-[calc(50vw-40px)] gap-6">
-          </div>
-      </div>
-      <div class="text-center mt-4">
-        <p id="planetName" class="text-white text-lg font-bold tracking-widest"></p>
-      </div>
-    </div>
-    
-    <div class="absolute bottom-36 right-6 space-y-3 z-20">
-      <button id="resetBtn" class="w-12 h-12 glass-panel rounded-full flex items-center justify-center hover:bg-white/10 transition-colors">
-        <i class="fas fa-redo text-white text-lg"></i>
-      </button>
-      <button id="exitArBtn" class="w-12 h-12 glass-panel rounded-full flex items-center justify-center hover:bg-white/10 transition-colors">
-        <i class="fas fa-sign-out-alt text-white text-lg"></i>
-      </button>
-    </div>
-  </div>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
-  
-  <script type="module">
-    import * as THREE from 'three';
-    import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-    import { ARButton } from 'three/addons/webxr/ARButton.js';
-    
-    // ============================================
-    // 1. 全域變數宣告 (修正 Scope 問題)
-    // ============================================
-    let xrSession = null;
-    let xrRefSpace = null;
-    let hitTestSource = null; // 確保只宣告一次
-    let reticle;
-    let shadowPlane;
-    const placedPlanets = [];
-    
-    const raycaster = new THREE.Raycaster();
-    const textureLoader = new THREE.TextureLoader();
-    const fbxLoader = new FBXLoader();
-
-    // ============================================
-    // 2. 資料與資源
-    // ============================================
-    const textures = {
-      mercury: 'https://upload.wikimedia.org/wikipedia/commons/3/30/Mercury_in_color_-_Prockter07_centered.jpg',
-      venus: 'https://upload.wikimedia.org/wikipedia/commons/0/02/Venus_globe_-_magellan_radar_1024.jpg',
-      earth: 'https://upload.wikimedia.org/wikipedia/commons/c/c3/Solarsystemscope_texture_2k_earth_daymap.jpg',
-      mars: 'https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg',
-      jupiter: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Jupiter.jpg',
-      saturn: 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Saturn_%28planet%29_large.jpg'
-    };
-
-    const planetData = [
-      {
-        id: 'mercury', name: 'MERCURY', nameChinese: '水星', color: 0xA0A0A0, size: 0.3,
-        description: '最接近太陽的行星，表面佈滿隕石坑。', tag1: '岩石行星', tag2: '0.39 AU',
-        useFBX: false, texture: textures.mercury
-      },
-      {
-        id: 'venus', name: 'VENUS', nameChinese: '金星', color: 0xFFC649, size: 0.5,
-        description: '被稱為地球的姊妹星，表面溫度極高。', tag1: '岩石行星', tag2: '0.72 AU',
-        useFBX: false, texture: textures.venus
-      },
-      {
-        id: 'earth', name: 'EARTH', nameChinese: '地球', color: 0x2E7AB5, size: 0.5,
-        description: '我們唯一的家園，唯一已知存在生命的星球。', tag1: '岩石行星', tag2: '1.00 AU',
-        useFBX: true, fbxPath: 'models/earth.fbx', texture: textures.earth 
-      },
-      {
-        id: 'mars', name: 'MARS', nameChinese: '火星', color: 0xC1440E, size: 0.4,
-        description: '紅色星球，未來人類探索與殖民的首要目標。', tag1: '岩石行星', tag2: '1.52 AU',
-        useFBX: false, texture: textures.mars
-      },
-      {
-        id: 'jupiter', name: 'JUPITER', nameChinese: '木星', color: 0xD4A373, size: 0.8,
-        description: '太陽系最大的行星，擁有標誌性的大紅斑。', tag1: '氣態巨星', tag2: '5.20 AU',
-        useFBX: false, texture: textures.jupiter
-      },
-      {
-        id: 'saturn', name: 'SATURN', nameChinese: '土星', color: 0xEAD6B8, size: 0.7,
-        description: '擁有壯觀的行星環系統。', tag1: '氣態巨星', tag2: '9.58 AU',
-        useFBX: false, texture: textures.saturn, hasRings: true
-      }
-    ];
-
-    let selectedPlanet = planetData[2]; // Default: Earth
-
-    // ============================================
-    // 3. 場景設置
-    // ============================================
-    const canvas = document.getElementById('canvas3d');
-    const arButton = document.getElementById('ar-button');
-    const statusMessage = document.getElementById('status-message');
-    const hud = document.getElementById('hud');
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.xr.enabled = true;
-    
-    // 陰影設置
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    directionalLight.position.set(2, 4, 1);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    scene.add(directionalLight);
-
-    // ============================================
-    // 4. 輔助物件 (Reticle, Shadow, Text)
-    // ============================================
-    function createReticle() {
-      const geometry = new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI / 2);
-      const material = new THREE.MeshBasicMaterial({ color: 0x00F0FF });
-      reticle = new THREE.Mesh(geometry, material);
-      reticle.matrixAutoUpdate = false;
-      reticle.visible = false;
-      scene.add(reticle);
-    }
-    createReticle();
-
-    function createShadowPlane() {
-      const material = new THREE.ShadowMaterial({ opacity: 0.3 });
-      const geometry = new THREE.PlaneGeometry(10, 10);
-      shadowPlane = new THREE.Mesh(geometry, material);
-      shadowPlane.rotation.x = -Math.PI / 2;
-      shadowPlane.receiveShadow = true;
-      shadowPlane.visible = false;
-      scene.add(shadowPlane);
-    }
-    createShadowPlane();
-
-    function createTextSprite(text) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 256; canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.strokeStyle = '#00F0FF';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.roundRect(10, 20, 236, 80, 40);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.font = 'Bold 40px Arial';
-      ctx.fillStyle = 'white';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, 128, 60);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
-      sprite.scale.set(0.3, 0.15, 1);
-      return sprite;
-    }
-
-    // ============================================
-    // 5. 建立行星邏輯 (混合 FBX 與 Sphere)
-    // ============================================
-    function createPlanet(position, planet) {
-      if (planet.useFBX && planet.fbxPath) {
-        loadFBXModel(position, planet);
-      } else {
-        createSpherePlanet(position, planet);
-      }
-    }
-
-    function loadFBXModel(position, planet) {
-      showStatus(`Loading ${planet.name}...`);
-      fbxLoader.load(
-        planet.fbxPath,
-        (fbx) => {
-          fbx.scale.setScalar(planet.size * 0.002); // 調整 FBX 縮放
-          fbx.position.copy(position);
-          
-          fbx.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-              if(child.material) child.material.emissive = new THREE.Color(0x222222);
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
             }
-          });
-
-          fbx.userData = { rotationSpeed: 0.005 + Math.random() * 0.005 };
-          
-          const label = createTextSprite(planet.nameChinese);
-          label.position.set(0, (planet.size * 0.05) + 0.2, 0);
-          fbx.add(label);
-
-          scene.add(fbx);
-          placedPlanets.push(fbx);
-          showStatus(`${planet.name} Placed!`, 'success');
-        },
-        undefined,
-        (error) => {
-          console.warn('FBX Failed, fallback to sphere');
-          showStatus('FBX error, using fallback', 'error');
-          createSpherePlanet(position, planet);
         }
-      );
-    }
+    </script>
 
-    function createSpherePlanet(position, planet) {
-      const radius = planet.size * 0.1;
-      const geometry = new THREE.SphereGeometry(radius, 64, 64);
-      
-      let material;
-      if (planet.texture) {
-        const tex = textureLoader.load(planet.texture);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        material = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 });
-      } else {
-        material = new THREE.MeshStandardMaterial({ color: planet.color, roughness: 0.5 });
-      }
+    <script type="module">
+        import * as THREE from 'three';
+        import { ARButton } from 'three/addons/webxr/ARButton.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
-      const sphere = new THREE.Mesh(geometry, material);
-      sphere.position.copy(position);
-      sphere.castShadow = true;
-      sphere.receiveShadow = true;
-      sphere.userData = { rotationSpeed: 0.005 + Math.random() * 0.005 };
+        // 1. 變數宣告
+        let container;
+        let camera, scene, renderer;
+        let controller;
+        
+        let reticle;
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
 
-      // 土星環
-      if (planet.hasRings) {
-        const ringGeo = new THREE.RingGeometry(radius * 1.4, radius * 2.2, 64);
-        const ringMat = new THREE.MeshStandardMaterial({
-          color: 0xAA8866, side: THREE.DoubleSide, transparent: true, opacity: 0.8
-        });
-        const pos = ringGeo.attributes.position;
-        const v3 = new THREE.Vector3();
-        for (let i = 0; i < pos.count; i++) {
-          v3.fromBufferAttribute(pos, i);
-          ringGeo.attributes.uv.setXY(i, v3.length() < radius * 1.8 ? 0 : 1, 1);
+        const fbxLoader = new FBXLoader();
+        const textureLoader = new THREE.TextureLoader();
+        const placedObjects = [];
+
+        // 2. 行星資料
+        const planetData = [
+            { id: 'mercury', name: 'MERCURY', nameCh: '水星', color: 0xA0A0A0, size: 0.3, desc: '最接近太陽的行星。', texture: 'https://upload.wikimedia.org/wikipedia/commons/3/30/Mercury_in_color_-_Prockter07_centered.jpg' },
+            { id: 'venus', name: 'VENUS', nameCh: '金星', color: 0xFFC649, size: 0.5, desc: '太陽系最熱的行星。', texture: 'https://upload.wikimedia.org/wikipedia/commons/0/02/Venus_globe_-_magellan_radar_1024.jpg' },
+            { id: 'earth', name: 'EARTH', nameCh: '地球', color: 0x2E7AB5, size: 0.5, desc: '我們的家園。', useFBX: true, fbxPath: 'models/earth.fbx', texture: 'https://upload.wikimedia.org/wikipedia/commons/c/c3/Solarsystemscope_texture_2k_earth_daymap.jpg' },
+            { id: 'mars', name: 'MARS', nameCh: '火星', color: 0xC1440E, size: 0.4, desc: '紅色星球。', texture: 'https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg' },
+            { id: 'jupiter', name: 'JUPITER', nameCh: '木星', color: 0xD4A373, size: 0.8, desc: '巨大的氣態行星。', texture: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Jupiter.jpg' },
+            { id: 'saturn', name: 'SATURN', nameCh: '土星', color: 0xEAD6B8, size: 0.7, desc: '擁有美麗的光環。', hasRings: true, texture: 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Saturn_%28planet%29_large.jpg' }
+        ];
+
+        let selectedPlanet = planetData[2]; // 預設地球
+
+        init();
+        animate();
+
+        function init() {
+            container = document.createElement('div');
+            document.body.appendChild(container);
+
+            scene = new THREE.Scene();
+
+            // 燈光
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+            hemiLight.position.set(0.5, 1, 0.25);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+            dirLight.position.set(0, 5, 0);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+            // 渲染器 (關鍵: alpha: true)
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // AR 按鈕 (關鍵: domOverlay 指向 body，讓 UI 不會消失)
+            const arBtn = ARButton.createButton(renderer, { 
+                requiredFeatures: ['hit-test'],
+                optionalFeatures: ['dom-overlay'],
+                domOverlay: { root: document.body }
+            });
+            document.body.appendChild(arBtn);
+
+            // 控制器 (點擊事件)
+            controller = renderer.xr.getController(0);
+            controller.addEventListener('select', onSelect);
+            scene.add(controller);
+
+            // 準心 (Reticle)
+            reticle = new THREE.Mesh(
+                new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
+                new THREE.MeshBasicMaterial({ color: 0x00F0FF })
+            );
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
+
+            window.addEventListener('resize', onWindowResize);
+
+            // 初始化 UI
+            initUI();
         }
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.rotation.x = Math.PI / 2;
-        ring.castShadow = true;
-        ring.receiveShadow = true;
-        sphere.add(ring);
-        sphere.rotation.z = Math.PI / 6;
-      }
 
-      const label = createTextSprite(planet.nameChinese);
-      label.position.set(0, radius + 0.15, 0);
-      sphere.add(label);
-
-      scene.add(sphere);
-      placedPlanets.push(sphere);
-      
-      sphere.scale.set(0,0,0);
-      let s = 0;
-      const anim = setInterval(() => {
-        s += 0.1;
-        sphere.scale.set(s,s,s);
-        if(s >= 1) clearInterval(anim);
-      }, 16);
-    }
-
-    // ============================================
-    // 6. WebXR 啟動與循環
-    // ============================================
-    async function startAR() {
-      if (!navigator.xr) return showStatus('WebXR Not Supported', 'error');
-      
-      try {
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test'],
-          optionalFeatures: ['dom-overlay'],
-          domOverlay: { root: hud }
-        });
-
-        renderer.xr.setSession(session);
-        xrSession = session; // Assign global var
-
-	// =============== 新增這段修正 ===============
-        // 強制確保場景背景透明，讓攝影機畫面透出來
-        scene.background = null; 
-        // 確保 renderer 清除顏色是透明的
-        renderer.setClearColor(0x000000, 0);
-        // ===========================================	
-        
-        arButton.classList.add('hidden');
-        hud.classList.remove('hidden');
-        showStatus('Tap floor to place planet!', 'success');
-        
-        session.addEventListener('end', () => {
-          xrSession = null;
-          hud.classList.add('hidden');
-          arButton.classList.remove('hidden');
-          shadowPlane.visible = false;
-        });
-
-        xrRefSpace = await session.requestReferenceSpace('local-floor');
-        const viewerSpace = await session.requestReferenceSpace('viewer');
-        
-        // 修正點：這裡只賦值，不重新宣告 (remove 'const' or 'let')
-        hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-      } catch (e) {
-        showStatus('AR Error: ' + e.message, 'error');
-      }
-    }
-
-    renderer.xr.addEventListener('sessionstart', () => renderer.setAnimationLoop(render));
-    renderer.xr.addEventListener('sessionend', () => renderer.setAnimationLoop(null));
-
-    function render(time, frame) {
-      if (!frame) return;
-
-      if (hitTestSource && xrRefSpace) {
-        const hitResults = frame.getHitTestResults(hitTestSource);
-        if (hitResults.length > 0) {
-          const pose = hitResults[0].getPose(xrRefSpace);
-          reticle.visible = true;
-          reticle.matrix.fromArray(pose.transform.matrix);
-          
-          if(!shadowPlane.visible) shadowPlane.visible = true;
-          const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-          shadowPlane.position.y = pos.y;
-        } else {
-          reticle.visible = false;
+        // 點擊螢幕放置行星
+        function onSelect() {
+            if (reticle.visible) {
+                const position = new THREE.Vector3();
+                position.setFromMatrixPosition(reticle.matrix);
+                // 稍微抬高以免埋在地下
+                position.y += selectedPlanet.size * 0.1;
+                createPlanetModel(position, selectedPlanet);
+            }
         }
-      }
 
-      placedPlanets.forEach(obj => {
-        if (obj.userData.rotationSpeed) obj.rotation.y += obj.userData.rotationSpeed;
-      });
+        // 建立行星模型 (FBX 或 Sphere)
+        function createPlanetModel(pos, data) {
+            showMsg(`Placing ${data.name}...`);
+            
+            if (data.useFBX && data.fbxPath) {
+                // FBX 載入模式
+                fbxLoader.load(data.fbxPath, (fbx) => {
+                    fbx.position.copy(pos);
+                    fbx.scale.setScalar(data.size * 0.002); // 調整 FBX 縮放
+                    
+                    fbx.traverse(c => {
+                        if(c.isMesh) {
+                            c.castShadow = true; 
+                            c.receiveShadow = true;
+                            if(c.material) c.material.emissive = new THREE.Color(0x222222);
+                        }
+                    });
+                    
+                    // 自轉與標籤
+                    fbx.userData = { rotateSpeed: 0.01 };
+                    addLabel(fbx, data.nameCh, data.size * 0.05 + 0.1);
+                    
+                    scene.add(fbx);
+                    placedObjects.push(fbx);
+                    showMsg("Placed FBX!");
+                }, undefined, (err) => {
+                    console.error(err);
+                    showMsg("FBX Error, using fallback");
+                    createSphereFallback(pos, data); // 失敗則使用球體
+                });
+            } else {
+                createSphereFallback(pos, data);
+            }
+        }
 
-      renderer.render(scene, camera);
-    }
+        function createSphereFallback(pos, data) {
+            const radius = data.size * 0.1;
+            const geo = new THREE.SphereGeometry(radius, 64, 64);
+            let mat;
+            
+            if (data.texture) {
+                const tex = textureLoader.load(data.texture);
+                tex.colorSpace = THREE.SRGBColorSpace;
+                mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 });
+            } else {
+                mat = new THREE.MeshStandardMaterial({ color: data.color });
+            }
 
-    // ============================================
-    // 7. 互動事件
-    // ============================================
-    const controller = renderer.xr.getController(0);
-    controller.addEventListener('select', () => {
-      if (reticle.visible) {
-        const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-        pos.y += selectedPlanet.size * 0.1;
-        createPlanet(pos, selectedPlanet);
-      }
-    });
-    scene.add(controller);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(pos);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { rotateSpeed: 0.01 };
 
-    hud.addEventListener('touchstart', (e) => {
-      if(e.target.closest('button') || e.target.closest('.scroll-container')) {
-        e.stopPropagation();
-      }
-    });
+            // 土星環
+            if (data.hasRings) {
+                const ringGeo = new THREE.RingGeometry(radius * 1.4, radius * 2.2, 64);
+                const ringMat = new THREE.MeshStandardMaterial({
+                    color: 0xAA8866, side: THREE.DoubleSide, transparent: true, opacity: 0.8
+                });
+                // UV Fix
+                const uvPos = ringGeo.attributes.position;
+                const v3 = new THREE.Vector3();
+                for (let i = 0; i < uvPos.count; i++) {
+                    v3.fromBufferAttribute(uvPos, i);
+                    ringGeo.attributes.uv.setXY(i, v3.length() < radius * 1.8 ? 0 : 1, 1);
+                }
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.receiveShadow = true;
+                mesh.add(ring);
+                mesh.rotation.z = Math.PI / 6;
+            }
 
-    // UI Logic
-    const carousel = document.getElementById('planetCarousel');
-    const planetNameDisplay = document.getElementById('planetName');
-    
-    function rgbToString(c, b=1) {
-      const r = Math.min(255, ((c>>16)&255)*b);
-      const g = Math.min(255, ((c>>8)&255)*b);
-      const bl = Math.min(255, (c&255)*b);
-      return `rgb(${r},${g},${bl})`;
-    }
+            addLabel(mesh, data.nameCh, radius + 0.1);
+            scene.add(mesh);
+            placedObjects.push(mesh);
+            
+            // Pop 動畫
+            mesh.scale.set(0,0,0);
+            let s = 0;
+            const interval = setInterval(() => {
+                s += 0.1;
+                mesh.scale.set(s,s,s);
+                if(s>=1) clearInterval(interval);
+            }, 16);
+        }
 
-    planetData.forEach((p, i) => {
-      const icon = document.createElement('div');
-      icon.className = 'planet-icon w-16 h-16 rounded-full flex items-center justify-center cursor-pointer transition-all border-2 border-white/20';
-      
-      if(p.texture) {
-        icon.style.backgroundImage = `url(${p.texture})`;
-        icon.style.backgroundSize = 'cover';
-      } else {
-        icon.style.background = `radial-gradient(circle, ${rgbToString(p.color, 1.3)}, ${rgbToString(p.color, 0.7)})`;
-      }
-      
-      icon.addEventListener('click', () => {
-        carousel.scrollTo({ left: icon.offsetLeft - carousel.offsetWidth/2 + 32, behavior:'smooth' });
-      });
-      carousel.appendChild(icon);
-    });
+        function addLabel(parent, text, yOffset) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath(); ctx.roundRect(10,20,236,80,40); ctx.fill();
+            ctx.strokeStyle = '#00F0FF'; ctx.lineWidth = 4; ctx.stroke();
+            ctx.font = 'bold 50px Arial'; ctx.fillStyle = 'white';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 128, 60);
 
-    function updateCarousel() {
-      const center = carousel.scrollLeft + carousel.offsetWidth/2;
-      const icons = carousel.querySelectorAll('.planet-icon');
-      let closest = 0, minD = Infinity;
-      
-      icons.forEach((icon, i) => {
-        const d = Math.abs((icon.offsetLeft + 32) - center);
-        if(d < minD) { minD = d; closest = i; }
-        icon.classList.remove('active');
-        icon.style.borderColor = 'rgba(255,255,255,0.2)';
-      });
-      
-      icons[closest].classList.add('active');
-      icons[closest].style.borderColor = '#00F0FF';
-      selectedPlanet = planetData[closest];
-      planetNameDisplay.textContent = selectedPlanet.name;
-      
-      document.getElementById('modalTitle').textContent = selectedPlanet.nameChinese + ' ' + selectedPlanet.name;
-      document.getElementById('modalDescription').textContent = selectedPlanet.description;
-      document.getElementById('modalTag1').textContent = selectedPlanet.tag1;
-      document.getElementById('modalTag2').textContent = selectedPlanet.tag2;
-      document.getElementById('infoModal').classList.remove('hidden');
-      document.getElementById('infoModal').classList.add('visible');
-    }
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
+            sprite.scale.set(0.3, 0.15, 1);
+            sprite.position.set(0, yOffset, 0);
+            parent.add(sprite);
+        }
 
-    carousel.addEventListener('scroll', updateCarousel);
-    setTimeout(updateCarousel, 200);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
-    document.getElementById('closeInfo').addEventListener('click', () => document.getElementById('infoModal').classList.add('hidden'));
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      placedPlanets.forEach(p => scene.remove(p));
-      placedPlanets.length = 0;
-      showStatus('Scene Cleared');
-    });
-    document.getElementById('exitArBtn').addEventListener('click', () => xrSession?.end());
-    arButton.addEventListener('click', startAR);
+        // 3. 動畫迴圈 (官方標準寫法)
+        function animate() {
+            renderer.setAnimationLoop(render);
+        }
 
-    function showStatus(msg, type='info') {
-      statusMessage.textContent = msg;
-      statusMessage.style.color = type === 'error' ? '#ff4444' : 'white';
-      statusMessage.classList.remove('hidden');
-      setTimeout(() => statusMessage.classList.add('hidden'), 3000);
-    }
-    
-    // Check support on load
-    if (navigator.xr) {
-      navigator.xr.isSessionSupported('immersive-ar').then(supported => {
-        if(!supported) { arButton.textContent = 'AR Not Supported'; arButton.disabled = true; }
-      });
-    }
-  </script>
+        function render(timestamp, frame) {
+            if (frame) {
+                const referenceSpace = renderer.xr.getReferenceSpace();
+                const session = renderer.xr.getSession();
+
+                // 請求 Hit Test Source (只做一次)
+                if (hitTestSourceRequested === false) {
+                    session.requestReferenceSpace('viewer').then(function (referenceSpace) {
+                        session.requestHitTestSource({ space: referenceSpace }).then(function (source) {
+                            hitTestSource = source;
+                        });
+                    });
+                    session.addEventListener('end', function () {
+                        hitTestSourceRequested = false;
+                        hitTestSource = null;
+                        document.getElementById('ARButton').style.display = 'block'; // Show button again
+                    });
+                    hitTestSourceRequested = true;
+                }
+
+                // 執行 Hit Test
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    if (hitTestResults.length) {
+                        const hit = hitTestResults[0];
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+                    } else {
+                        reticle.visible = false;
+                    }
+                }
+            }
+
+            // 自轉動畫
+            placedObjects.forEach(obj => {
+                if (obj.userData.rotateSpeed) obj.rotation.y += obj.userData.rotateSpeed;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // ================= UI 邏輯 =================
+        function initUI() {
+            const carousel = document.getElementById('carousel');
+            const nameLabel = document.getElementById('currentPlanetName');
+            const infoBox = document.getElementById('infoBox');
+
+            planetData.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'planet-icon';
+                div.style.backgroundImage = `url(${p.texture})`;
+                div.onclick = () => {
+                    // Update selection
+                    document.querySelectorAll('.planet-icon').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    selectedPlanet = p;
+                    nameLabel.textContent = p.name;
+                    
+                    // Show info
+                    document.getElementById('pName').textContent = p.nameCh;
+                    document.getElementById('pDesc').textContent = p.desc;
+                    infoBox.classList.remove('hidden');
+                    
+                    // Center scroll
+                    const center = div.offsetLeft - window.innerWidth/2 + 30;
+                    carousel.scrollTo({left: center, behavior: 'smooth'});
+                };
+                if(i === 2) div.classList.add('active'); // Default Earth
+                carousel.appendChild(div);
+            });
+
+            // 預設捲動到中間
+            setTimeout(() => {
+                const earth = carousel.children[2];
+                if(earth) carousel.scrollTo({left: earth.offsetLeft - window.innerWidth/2 + 30});
+            }, 100);
+
+            document.getElementById('resetBtn').onclick = () => {
+                placedObjects.forEach(o => scene.remove(o));
+                placedObjects.length = 0;
+            };
+        }
+
+        function showMsg(txt) {
+            const el = document.getElementById('status');
+            el.innerText = txt;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 2000);
+        }
+
+    </script>
 </body>
 </html>
