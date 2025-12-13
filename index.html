@@ -3,292 +3,411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>浩瀚星際：太陽系漫遊</title>
+    <title>浩瀚星際：最終展覽版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #050510; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
         .ui-layer { position: absolute; z-index: 10; pointer-events: none; width: 100%; height: 100%; }
         .interactive { pointer-events: auto; }
 
-        /* 玻璃面板 */
+        /* 介紹視窗 */
         .glass-panel {
-            background: rgba(20, 25, 40, 0.8);
+            background: rgba(15, 20, 35, 0.85);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(100, 200, 255, 0.2);
             border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
             transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        /* 按鈕樣式 */
+        /* 右上角操作說明 */
+        .instruction-box {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 15px;
+            color: #fff;
+            max-width: 250px;
+            pointer-events: none;
+        }
+        .key-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 5px; color: #4facfe;
+        }
+
+        /* 下方選單 */
         .planet-btn {
             width: 60px; height: 60px; border-radius: 50%;
             border: 2px solid rgba(255,255,255,0.2);
             background-size: cover; background-position: center;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            cursor: pointer; flex-shrink: 0; position: relative;
-            background-color: #000;
+            transition: all 0.4s; cursor: pointer; flex-shrink: 0; position: relative; background-color: #000;
         }
         .planet-btn.active {
             transform: scale(1.3) translateY(-10px);
-            border-color: #fff;
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            border-color: #4facfe;
+            box-shadow: 0 0 30px rgba(79, 172, 254, 0.8);
             z-index: 20;
         }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* Loading */
         #loader {
             position: fixed; inset: 0; background: #000000; z-index: 999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             transition: opacity 1s ease-out;
+        }
+        
+        /* 點擊特效 */
+        .click-marker {
+            position: absolute; width: 40px; height: 40px;
+            border: 2px solid rgba(79, 172, 254, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            display: none; z-index: 50;
+        }
+        @keyframes ripple {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2.0); opacity: 0; }
         }
     </style>
 </head>
 <body>
 
     <div id="loader">
-        <div class="relative w-20 h-20 mb-6">
-            <div class="absolute inset-0 border-t-2 border-white rounded-full animate-spin"></div>
+        <div class="relative w-24 h-24 mb-6">
+            <div class="absolute inset-0 border-4 border-blue-900/30 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
         </div>
-        <div class="text-white text-xs tracking-[0.5em] font-light">LOADING STARS</div>
+        <div class="text-blue-200 text-xs tracking-[0.5em] font-light animate-pulse">LOADING UNIVERSE</div>
     </div>
 
     <div id="canvas-container"></div>
+    <div id="clickMarker" class="click-marker"></div>
 
     <div class="ui-layer flex flex-col justify-between p-6">
         
-        <div class="mt-4 ml-2">
-            <h1 class="text-white font-bold text-4xl tracking-widest drop-shadow-2xl" style="font-family: 'Impact', sans-serif;">SOLAR SYSTEM</h1>
-            <p class="text-white/60 text-[10px] mt-1 tracking-[0.4em] uppercase">Virtual Space Tour</p>
+        <div class="flex justify-between items-start w-full">
+            <div class="mt-2 ml-2">
+                <h1 class="text-white font-bold text-4xl tracking-widest drop-shadow-2xl" style="font-family: 'Impact', sans-serif; background: linear-gradient(to bottom, #fff, #99ccff); -webkit-background-clip: text; color: transparent;">THE COSMOS</h1>
+                <p class="text-blue-400/80 text-[10px] mt-1 tracking-[0.4em] uppercase">Interactive Exhibition</p>
+            </div>
+
+            <div class="instruction-box mt-2 mr-2">
+                <h3 class="text-blue-300 text-xs font-bold tracking-widest mb-2 uppercase border-b border-white/10 pb-1">控制說明 Controls</h3>
+                <ul class="space-y-2 text-xs text-gray-300 font-light">
+                    <li class="flex items-start"><span class="key-badge"><i class="fas fa-mouse-pointer"></i> 雙擊</span> <span class="leading-tight">點擊空白處移動太空人</span></li>
+                    <li class="flex items-start"><span class="key-badge"><i class="fas fa-globe"></i> 單點</span> <span class="leading-tight">點擊星球或下方選單切換星球</span></li>
+                    <li class="flex items-start"><span class="key-badge"><i class="fas fa-hand-pointer"></i> 拖曳</span> <span class="leading-tight">旋轉視角觀察</span></li>
+                </ul>
+            </div>
         </div>
 
         <div id="infoModal" class="glass-panel absolute top-1/2 left-4 md:left-12 -translate-y-1/2 w-[90%] max-w-[360px] p-8 opacity-0 translate-x-[-40px] pointer-events-none transition-all duration-500">
-            
             <button id="closeBtn" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/20 hover:text-white transition-all interactive">
                 <i class="fas fa-times text-lg"></i>
             </button>
-
             <div class="absolute -top-4 -right-2 text-[100px] font-bold text-white/5 pointer-events-none select-none" id="mBgNum" style="font-family: Impact;">01</div>
-            
             <h2 id="mName" class="text-4xl font-bold text-white mb-1 drop-shadow-md">PLANET</h2>
-            <p id="mEn" class="text-blue-300 text-xs font-bold tracking-[0.25em] mb-6 uppercase">System</p>
-            
-            <div class="h-[1px] w-full bg-white/20 mb-6"></div>
-            
-            <p id="mDesc" class="text-gray-200 text-sm leading-7 mb-8 font-light text-justify tracking-wide">
-                Description...
-            </p>
-
+            <p id="mEn" class="text-cyan-400 text-xs font-bold tracking-[0.25em] mb-6 uppercase">System</p>
+            <div class="h-[1px] w-full bg-gradient-to-r from-cyan-500/50 to-transparent mb-6"></div>
+            <p id="mDesc" class="text-gray-200 text-sm leading-7 mb-8 font-light text-justify tracking-wide">Description...</p>
             <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white/10 rounded-xl p-3 border border-white/10 backdrop-blur-sm">
-                    <div class="text-[10px] text-white/60 mb-1 uppercase tracking-wider">Type</div>
+                <div class="bg-blue-900/20 rounded-xl p-3 border border-blue-500/20 backdrop-blur-sm">
+                    <div class="text-[10px] text-blue-300/70 mb-1 uppercase tracking-wider">Type</div>
                     <div id="mTag1" class="text-sm text-white font-medium">Data</div>
                 </div>
-                <div class="bg-white/10 rounded-xl p-3 border border-white/10 backdrop-blur-sm">
-                    <div class="text-[10px] text-white/60 mb-1 uppercase tracking-wider">Distance</div>
+                <div class="bg-purple-900/20 rounded-xl p-3 border border-purple-500/20 backdrop-blur-sm">
+                    <div class="text-[10px] text-purple-300/70 mb-1 uppercase tracking-wider">Distance</div>
                     <div id="mTag2" class="text-sm text-white font-medium">Data</div>
                 </div>
             </div>
         </div>
 
-        <div class="w-full interactive pb-8">
+        <div class="w-full interactive pb-4">
             <div class="flex justify-center items-center gap-6 overflow-x-auto px-10 py-4 no-scrollbar" id="menuContainer"></div>
         </div>
     </div>
 
     <script type="importmap">
-        { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+        { 
+            "imports": { 
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", 
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" 
+            } 
+        }
     </script>
 
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // ==========================================
         // 1. 資料設定
-        // ==========================================
         const planetsData = [
-            { 
-                id: 'mercury', name: '水星', en: 'MERCURY', 
-                desc: '太陽系中最小且最接近太陽的行星。表面佈滿隕石坑，看起來很像月球。這裡沒有大氣層調節，白天溫度高達 430°C，晚上則驟降至 -180°C。', 
-                tag1: '岩石行星', tag2: '0.39 AU', 
-                tex: 'https://upload.wikimedia.org/wikipedia/commons/3/30/Mercury_in_color_-_Prockter07_centered.jpg', 
-                size: 0.8, pos: 0, zOffset: 8 
-            },
-            { 
-                id: 'venus', name: '金星', en: 'VENUS', 
-                desc: '夜空中最亮的天體，擁有極厚重的二氧化碳大氣層，是太陽系最熱的行星（465°C）。它的自轉方向與其他行星相反，在那裡太陽是從西邊升起的。', 
-                tag1: '岩石行星', tag2: '0.72 AU', 
-                tex: 'https://upload.wikimedia.org/wikipedia/commons/0/02/Venus_globe_-_magellan_radar_1024.jpg', 
-                size: 1.2, pos: 25, zOffset: -12
-            },
-            { 
-                id: 'earth', name: '地球', en: 'EARTH', 
-                desc: '我們的家園，唯一已知存在生命的藍色星球。71% 的表面被海洋覆蓋。大氣層富含氧氣，並擁有保護性的磁場，阻擋有害的太陽輻射。', 
-                tag1: '生命搖籃', tag2: '1.00 AU', 
-                tex: 'https://upload.wikimedia.org/wikipedia/commons/c/c3/Solarsystemscope_texture_2k_earth_daymap.jpg', 
-                size: 1.3, pos: 50, zOffset: 10
-            },
-            { 
-                id: 'mars', name: '火星', en: 'MARS', 
-                desc: '富含氧化鐵的「紅色星球」。擁有太陽系最高的奧林帕斯火山。這裡有乾涸的河床與極地冰帽，是人類星際移民的首要目標。', 
-                tag1: '岩石行星', tag2: '1.52 AU', 
-                tex: 'https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg', 
-                size: 1.0, pos: 75, zOffset: -18
-            },
-            { 
-                id: 'jupiter', name: '木星', en: 'JUPITER', 
-                desc: '巨大的氣態行星，體積可容納 1300 個地球。主要由氫和氦組成。表面標誌性的「大紅斑」是一個比地球還大的超級風暴，已持續數百年。', 
-                tag1: '氣態巨星', tag2: '5.20 AU', 
-                tex: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Jupiter.jpg', 
-                size: 3.5, pos: 115, zOffset: 12
-            },
-            { 
-                id: 'saturn', name: '土星', en: 'SATURN', 
-                desc: '以其夢幻般的冰環系統聞名。土星環由數十億個冰塊和岩石組成。它是密度最低的行星，理論上如果放在超大浴缸裡，它會浮在水面上。', 
-                tag1: '氣態巨星', tag2: '9.58 AU', 
-                tex: 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Saturn_%28planet%29_large.jpg', 
-                size: 3.0, pos: 155, zOffset: -22, ring: true
-            }
+            { id: 'mercury', name: '水星', en: 'MERCURY', desc: '最接近太陽的行星。表面佈滿隕石坑。白天溫度高達 430°C，晚上則驟降至 -180°C。', tag1: '岩石行星', tag2: '0.39 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/3/30/Mercury_in_color_-_Prockter07_centered.jpg', size: 0.8, pos: 0, zOffset: 8 },
+            { id: 'venus', name: '金星', en: 'VENUS', desc: '夜空中最亮的天體，擁有極厚重的二氧化碳大氣層，是太陽系最熱的行星（465°C）。', tag1: '岩石行星', tag2: '0.72 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/0/02/Venus_globe_-_magellan_radar_1024.jpg', size: 1.2, pos: 25, zOffset: -12 },
+            { id: 'earth', name: '地球', en: 'EARTH', desc: '我們的家園，唯一已知存在生命的藍色星球。71% 的表面被海洋覆蓋。', tag1: '生命搖籃', tag2: '1.00 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/c/c3/Solarsystemscope_texture_2k_earth_daymap.jpg', size: 1.3, pos: 50, zOffset: 10 },
+            { id: 'mars', name: '火星', en: 'MARS', desc: '富含氧化鐵的「紅色星球」。擁有太陽系最高的奧林帕斯火山。', tag1: '岩石行星', tag2: '1.52 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg', size: 1.0, pos: 75, zOffset: -18 },
+            { id: 'jupiter', name: '木星', en: 'JUPITER', desc: '巨大的氣態行星，體積可容納 1300 個地球。擁有標誌性的「大紅斑」風暴。', tag1: '氣態巨星', tag2: '5.20 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Jupiter.jpg', size: 3.5, pos: 115, zOffset: 12 },
+            { id: 'saturn', name: '土星', en: 'SATURN', desc: '以其夢幻般的冰環系統聞名。密度極低，理論上可以浮在水面上。', tag1: '氣態巨星', tag2: '9.58 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Saturn_%28planet%29_large.jpg', size: 3.0, pos: 155, zOffset: -22, ring: true }
         ];
 
-        // ==========================================
-        // 2. 場景與相機
-        // ==========================================
+        let currentPlanetIndex = 2; // 預設地球
+
+        // 2. 場景
         const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.FogExp2(0x050510, 0.002);
+
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.shadowMap.enabled = true; 
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.enablePan = false;
         controls.minDistance = 5; 
         controls.maxDistance = 200;
 
-        // ==========================================
-        // 3. 簡單星空 (維持全黑+星星)
-        // ==========================================
-        function createSimpleStarField() {
-            const geometry = new THREE.BufferGeometry();
-            const vertices = [];
-            for (let i = 0; i < 5000; i++) {
-                vertices.push(
-                    THREE.MathUtils.randFloatSpread(1000), 
-                    THREE.MathUtils.randFloatSpread(1000), 
-                    THREE.MathUtils.randFloatSpread(1000)
-                );
+        // 星空背景
+        function createBlueNebulaBackground() {
+            const starGeo = new THREE.BufferGeometry();
+            const starCount = 3000;
+            const starPos = new Float32Array(starCount * 3);
+            for(let i=0; i<starCount*3; i++) starPos[i] = (Math.random() - 0.5) * 1500;
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.8, transparent: true, opacity: 0.8});
+            scene.add(new THREE.Points(starGeo, starMat));
+
+            const particleCount = 1000;
+            const particleGeo = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            const particleColors = new Float32Array(particleCount * 3);
+            const color1 = new THREE.Color(0x0066ff); const color2 = new THREE.Color(0x6600ff);
+            
+            for(let i=0; i<particleCount; i++) {
+                const r = 400 + Math.random() * 400;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                particlePos[i*3] = r * Math.sin(phi) * Math.cos(theta);
+                particlePos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+                particlePos[i*3+2] = r * Math.cos(phi);
+                const mixedColor = color1.clone().lerp(color2, Math.random());
+                particleColors[i*3] = mixedColor.r; particleColors[i*3+1] = mixedColor.g; particleColors[i*3+2] = mixedColor.b;
             }
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            const material = new THREE.PointsMaterial({
-                color: 0xffffff, size: 0.7, transparent: true, opacity: 0.8, sizeAttenuation: true
-            });
-            const stars = new THREE.Points(geometry, material);
-            scene.add(stars);
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+            const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(16,16,0,16,16,16);
+            grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.2)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad; ctx.fillRect(0,0,32,32);
+            const texture = new THREE.CanvasTexture(canvas);
+            const particleMat = new THREE.PointsMaterial({ size: 8, map: texture, vertexColors: true, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending });
+            scene.add(new THREE.Points(particleGeo, particleMat));
         }
-        createSimpleStarField();
+        createBlueNebulaBackground();
 
         // 燈光
         const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
-        sunLight.position.set(-50, 30, 50);
+        sunLight.position.set(-50, 50, 50);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048; sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5; sunLight.shadow.camera.far = 500;
+        sunLight.shadow.camera.left = -100; sunLight.shadow.camera.right = 100; sunLight.shadow.camera.top = 100; sunLight.shadow.camera.bottom = -100;
         scene.add(sunLight);
-        const fillLight = new THREE.DirectionalLight(0xccccff, 0.4);
-        fillLight.position.set(50, 0, -50);
-        scene.add(fillLight);
-        const ambientLight = new THREE.AmbientLight(0x222222, 1);
-        scene.add(ambientLight);
+        scene.add(new THREE.AmbientLight(0x222222, 1));
+        scene.add(new THREE.DirectionalLight(0x0044ff, 1.0));
 
-        // ==========================================
-        // 4. 建立星球
-        // ==========================================
+        // 3. 建立星球 & 隱形地板
         const loader = new THREE.TextureLoader();
         const planetMeshes = [];
         
         planetsData.forEach(data => {
             const geometry = new THREE.SphereGeometry(data.size, 64, 64);
-            const material = new THREE.MeshStandardMaterial({
-                map: loader.load(data.tex),
-                roughness: 0.8, metalness: 0.1
-            });
+            const material = new THREE.MeshStandardMaterial({ map: loader.load(data.tex), roughness: 0.8, metalness: 0.1 });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(data.pos, 0, data.zOffset);
-            
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            mesh.userData = { isPlanet: true, index: planetsData.indexOf(data) };
+
             if(data.ring) {
                 const ringGeo = new THREE.RingGeometry(data.size * 1.4, data.size * 2.6, 64);
-                const ringMat = new THREE.MeshStandardMaterial({
-                    color: 0xc4b098, side: THREE.DoubleSide, transparent: true, opacity: 0.9,
-                    map: loader.load('https://i.imgur.com/4xT8zQZ.png')
-                });
-                const pos = ringGeo.attributes.position;
-                const v3 = new THREE.Vector3();
-                for (let i = 0; i < pos.count; i++) {
-                    v3.fromBufferAttribute(pos, i);
-                    ringGeo.attributes.uv.setXY(i, v3.length() < data.size * 2.0 ? 0 : 1, 1);
-                }
+                const ringMat = new THREE.MeshStandardMaterial({ color: 0xc4b098, side: THREE.DoubleSide, transparent: true, opacity: 0.9, map: loader.load('https://i.imgur.com/4xT8zQZ.png') });
+                const v3 = new THREE.Vector3(); const pos = ringGeo.attributes.position;
+                for (let i = 0; i < pos.count; i++) { v3.fromBufferAttribute(pos, i); ringGeo.attributes.uv.setXY(i, v3.length() < data.size * 2.0 ? 0 : 1, 1); }
                 const ring = new THREE.Mesh(ringGeo, ringMat);
-                ring.rotation.x = Math.PI / 2;
-                mesh.add(ring);
-                mesh.rotation.z = Math.PI / 8;
-                mesh.rotation.x = Math.PI / 8;
+                ring.rotation.x = Math.PI / 2; mesh.add(ring);
+                mesh.rotation.z = Math.PI / 8; mesh.rotation.x = Math.PI / 8;
+                ring.receiveShadow = true;
             }
             scene.add(mesh);
             planetMeshes.push(mesh);
         });
 
-        // ==========================================
-        // 5. 運鏡 (維持 5倍距離)
-        // ==========================================
+        // 隱形地板
+        const planeGeometry = new THREE.PlaneGeometry(1000, 1000);
+        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.3 }); 
+        const interactionPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+        interactionPlane.rotation.x = -Math.PI / 2;
+        interactionPlane.position.y = -2.5; 
+        interactionPlane.receiveShadow = true; 
+        scene.add(interactionPlane);
+
+        // 4. 太空人載入 (GLB 版本)
+        let astronaut = null;
+        let mixer = null;
+
+        const gltfLoader = new GLTFLoader();
+        
+        // ★★★ 讀取你的 astronaut.glb ★★★
+        gltfLoader.load(
+            'astronaut.glb', 
+            (gltf) => {
+                astronaut = gltf.scene;
+                
+                // [修改大小] 根據你的需求，這裡可以調整，目前設為 3 (約地球 1/3)
+                // 如果你的模型原始單位很大，可能要改成 0.1 或 0.05
+                astronaut.scale.set(3, 3, 3); 
+                
+                // [初始位置] 地球左側
+                const earthData = planetsData[2];
+                astronaut.position.set(earthData.pos - 4, -2.5, earthData.zOffset + 2);
+                astronaut.rotation.y = Math.PI / 2;
+
+                astronaut.traverse(c => { 
+                    if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
+                });
+
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(astronaut);
+                    const action = mixer.clipAction(gltf.animations[0]);
+                    action.play();
+                } else if (gltf.scene.animations && gltf.scene.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(astronaut);
+                    const action = mixer.clipAction(gltf.scene.animations[0]);
+                    action.play();
+                }
+
+                scene.add(astronaut);
+                console.log("GLB 載入成功");
+                
+                document.getElementById('loader').style.display = 'none';
+            },
+            (xhr) => {},
+            (error) => {
+                console.error(error);
+                alert("找不到 astronaut.glb！請確認檔案名稱與路徑，並使用 Live Server。");
+                
+                // 備案
+                const geo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+                const mat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                astronaut = new THREE.Mesh(geo, mat);
+                astronaut.position.set(50, -1.5, 10);
+                scene.add(astronaut);
+                document.getElementById('loader').style.display = 'none';
+            }
+        );
+
+        // 5. 互動控制
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(planetMeshes);
+            if (intersects.length > 0) {
+                let target = intersects[0].object;
+                if(!target.userData.isPlanet && target.parent.userData.isPlanet) target = target.parent;
+                
+                if(target.userData.isPlanet) {
+                    flyToPlanet(target.userData.index);
+                    document.querySelectorAll('.planet-btn').forEach(b => b.classList.remove('active'));
+                    menuContainer.children[target.userData.index].classList.add('active');
+                }
+            }
+        });
+
+        // 雙擊移動 (2D 平面限制)
+        window.addEventListener('dblclick', (event) => {
+            if (!astronaut) return;
+
+            // 特效
+            const marker = document.getElementById('clickMarker');
+            marker.style.left = event.clientX - 20 + 'px';
+            marker.style.top = event.clientY - 20 + 'px';
+            marker.style.display = 'block';
+            marker.style.animation = 'none';
+            marker.offsetHeight; 
+            marker.style.animation = 'ripple 0.5s linear forwards';
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObject(interactionPlane);
+            
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                
+                // [關鍵修改] 鎖定 Z 軸深度
+                const currentPlanetZ = planetsData[currentPlanetIndex].zOffset;
+                const targetX = point.x;
+                const targetZ = currentPlanetZ + 2; // 強制鎖定在星球前方
+
+                astronaut.lookAt(targetX, astronaut.position.y, targetZ);
+                
+                const dist = astronaut.position.distanceTo(new THREE.Vector3(targetX, astronaut.position.y, targetZ));
+                const duration = dist * 100; // 調整速度
+
+                new TWEEN.Tween(astronaut.position)
+                    .to({ x: targetX, z: targetZ }, duration)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .start();
+            }
+        });
+
         function flyToPlanet(index) {
+            currentPlanetIndex = index;
             const targetPlanet = planetMeshes[index];
             const data = planetsData[index];
-
-            // 飛行開始時，先關閉視窗
             toggleModal(false);
 
-            // 距離: 5.0 倍
+            // 切換星球時，太空人瞬移過去跟隨
+            if (astronaut) {
+                astronaut.position.set(data.pos - 4, -2.5, data.zOffset + 2);
+                astronaut.rotation.y = Math.PI / 2;
+            }
+
             const dist = data.size * 5.0; 
             const offsetX = data.size * 0.2;
+            const targetPos = { x: targetPlanet.position.x + offsetX, y: data.size * 0.3, z: targetPlanet.position.z + dist };
             
-            const targetPos = { 
-                x: targetPlanet.position.x + offsetX, 
-                y: data.size * 0.3, 
-                z: targetPlanet.position.z + dist 
-            };
-            
-            new TWEEN.Tween(camera.position)
-                .to(targetPos, 2000)
-                .easing(TWEEN.Easing.Cubic.InOut)
-                .onUpdate(() => {
-                    controls.target.set(targetPlanet.position.x, 0, targetPlanet.position.z);
-                })
-                .onComplete(() => {
-                    updateModalContent(index);
-                    toggleModal(true); // 飛行結束開啟視窗
-                    controls.minDistance = data.size * 2.5;
-                })
+            new TWEEN.Tween(camera.position).to(targetPos, 2000).easing(TWEEN.Easing.Cubic.InOut)
+                .onUpdate(() => controls.target.set(targetPlanet.position.x, 0, targetPlanet.position.z))
+                .onComplete(() => { updateModalContent(index); toggleModal(true); controls.minDistance = data.size * 2.5; })
                 .start();
 
-            new TWEEN.Tween(controls.target)
-                .to({ x: targetPlanet.position.x, y: 0, z: targetPlanet.position.z }, 2000)
-                .easing(TWEEN.Easing.Cubic.InOut)
-                .start();
+            new TWEEN.Tween(controls.target).to({ x: targetPlanet.position.x, y: 0, z: targetPlanet.position.z }, 2000)
+                .easing(TWEEN.Easing.Cubic.InOut).start();
         }
 
-        // ==========================================
-        // UI & Loop
-        // ==========================================
         const modal = document.getElementById('infoModal');
         const menuContainer = document.getElementById('menuContainer');
-        const closeBtn = document.getElementById('closeBtn'); // [NEW] 取得關閉按鈕
+        const closeBtn = document.getElementById('closeBtn');
 
         function updateModalContent(index) {
             const data = planetsData[index];
@@ -302,22 +421,15 @@
 
         function toggleModal(show) {
             if(show) {
-                // 顯示：加上 pointer-events-auto 讓裡面的按鈕可點
                 modal.classList.remove('opacity-0', 'translate-x-[-40px]', 'pointer-events-none');
                 modal.classList.add('opacity-100', 'translate-x-0', 'pointer-events-auto');
             } else {
-                // 隱藏：加上 pointer-events-none 防止誤觸
                 modal.classList.add('opacity-0', 'translate-x-[-40px]', 'pointer-events-none');
                 modal.classList.remove('opacity-100', 'translate-x-0', 'pointer-events-auto');
             }
         }
 
-        // [NEW] 關閉按鈕監聽事件
-        closeBtn.addEventListener('click', (e) => {
-            // 阻止事件冒泡，以免觸發其他點擊
-            e.stopPropagation();
-            toggleModal(false);
-        });
+        closeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleModal(false); });
 
         planetsData.forEach((p, i) => {
             const btn = document.createElement('div');
@@ -331,21 +443,21 @@
             menuContainer.appendChild(btn);
         });
 
-        // Start
-        const startIndex = 2; // Earth
+        // 初始運鏡
+        const startIndex = 2; 
         camera.position.set(0, 20, 100);
-        
         setTimeout(() => {
-            document.getElementById('loader').style.opacity = 0;
-            setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
             menuContainer.children[startIndex].click();
         }, 1500);
+
+        const clock = new THREE.Clock();
 
         function animate(time) {
             requestAnimationFrame(animate);
             TWEEN.update(time);
             controls.update();
             planetMeshes.forEach(m => m.rotation.y += 0.002);
+            if (mixer) mixer.update(clock.getDelta());
             renderer.render(scene, camera);
         }
         animate();
