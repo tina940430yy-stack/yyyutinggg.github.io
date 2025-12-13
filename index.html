@@ -24,7 +24,7 @@
             transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        /* 右上角操作說明視窗 */
+        /* 操作說明 */
         .instruction-box {
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(10px);
@@ -84,17 +84,7 @@
             transition: opacity 1s ease-out;
         }
         
-        .click-marker {
-            position: absolute; width: 40px; height: 40px;
-            border: 2px solid rgba(79, 172, 254, 0.8);
-            border-radius: 50%;
-            pointer-events: none; display: none; z-index: 50;
-        }
-        @keyframes ripple {
-            0% { transform: scale(0.5); opacity: 1; }
-            100% { transform: scale(2.0); opacity: 0; }
-        }
-        
+        /* 游標樣式 */
         .cursor-grab { cursor: grab; }
         .cursor-grabbing { cursor: grabbing; }
     </style>
@@ -110,7 +100,6 @@
     </div>
 
     <div id="canvas-container"></div>
-    <div id="clickMarker" class="click-marker"></div>
 
     <button id="helpBtn" class="help-btn">
         <i class="fas fa-question"></i>
@@ -134,12 +123,8 @@
                 </h3>
                 <ul class="space-y-3 text-xs text-gray-300 font-light">
                     <li class="flex items-center">
-                        <span class="key-badge"><i class="fas fa-mouse-pointer mr-1"></i> 雙擊地面</span> 
-                        <span>移動太空人</span>
-                    </li>
-                    <li class="flex items-center">
-                        <span class="key-badge"><i class="fas fa-sync-alt mr-1"></i> 拖曳角色</span> 
-                        <span>旋轉太空人方向</span>
+                        <span class="key-badge"><i class="fas fa-hand-rock mr-1"></i> 按住拖曳</span> 
+                        <span>移動太空人位置</span>
                     </li>
                     <li class="flex items-center">
                         <span class="key-badge"><i class="fas fa-globe mr-1"></i> 單點星球</span> 
@@ -308,10 +293,13 @@
             'astronaut.glb', 
             (gltf) => {
                 astronaut = gltf.scene;
-                astronaut.scale.set(2.0, 2.0, 2.0); 
+                
+                // [修正] 大小: 1.3 (比之前的 2.0 小 1/3)
+                astronaut.scale.set(1.3, 1.3, 1.3); 
                 
                 const earthData = planetsData[2];
-                astronaut.position.set(earthData.pos + 6, -1.0, earthData.zOffset + 2);
+                // [修正] 距離: zOffset + 1.0 (比之前的 +2 更近，貼著星球)
+                astronaut.position.set(earthData.pos + 4, -1.0, earthData.zOffset + 1.0);
                 astronaut.rotation.y = -Math.PI / 4; 
 
                 astronaut.traverse(c => { 
@@ -344,12 +332,15 @@
             }
         );
 
-        // 5. 互動
+        // 5. 互動控制 (全新拖曳系統)
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
+        
+        // 狀態變數
         let isDraggingAstronaut = false;
-        let previousMouseX = 0;
+        let dragOffset = new THREE.Vector3(); // 滑鼠點擊點與太空人中心的偏差
 
+        // 事件監聽 (支援滑鼠與觸控)
         window.addEventListener('mousedown', onPointerDown);
         window.addEventListener('mousemove', onPointerMove);
         window.addEventListener('mouseup', onPointerUp);
@@ -357,44 +348,90 @@
         window.addEventListener('touchmove', onPointerMove, {passive: false});
         window.addEventListener('touchend', onPointerUp);
 
+        // 1. 按下
         function onPointerDown(event) {
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            
             mouse.x = (clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            
             raycaster.setFromCamera(mouse, camera);
 
+            // 檢查是否點到太空人
             if (astronaut) {
                 const intersects = raycaster.intersectObject(astronaut, true);
                 if (intersects.length > 0) {
                     isDraggingAstronaut = true;
-                    previousMouseX = clientX;
-                    controls.enabled = false; 
+                    controls.enabled = false; // 暫停鏡頭控制
                     document.body.style.cursor = 'grabbing';
-                    return; 
+                    
+                    // 計算點擊點與太空人的位移差 (讓拖曳更自然)
+                    // 我們需要一個參考平面 (Reference Plane) 在太空人的 Z 深度
+                    const currentZ = astronaut.position.z;
+                    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -currentZ);
+                    const intersectPoint = new THREE.Vector3();
+                    raycaster.ray.intersectPlane(dragPlane, intersectPoint);
+                    
+                    if (intersectPoint) {
+                        dragOffset.subVectors(astronaut.position, intersectPoint);
+                    }
+                    return; // 阻止事件穿透
                 }
             }
         }
 
+        // 2. 移動 (拖曳中)
         function onPointerMove(event) {
+            if (!isDraggingAstronaut || !astronaut) return;
+            
+            // 防止手機滾動頁面
+            if(event.preventDefault) event.preventDefault();
+
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-            if (isDraggingAstronaut && astronaut) {
-                const deltaX = clientX - previousMouseX;
-                astronaut.rotation.y += deltaX * 0.01;
-                previousMouseX = clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+
+            // 建立虛擬移動平面 (鎖定在當前星球的深度前方)
+            // 這樣太空人只會上下左右動，不會前後跑
+            const currentPlanetZ = planetsData[currentPlanetIndex].zOffset;
+            const targetZ = currentPlanetZ + 1.2; // 鎖定深度
+            
+            const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
+            const targetPoint = new THREE.Vector3();
+            
+            raycaster.ray.intersectPlane(dragPlane, targetPoint);
+
+            if (targetPoint) {
+                // 更新位置 (加上偏移量，讓手感更好)
+                // 這裡我們稍微平滑移動 (Lerp) 
+                const newX = targetPoint.x + dragOffset.x;
+                const newY = targetPoint.y + dragOffset.y;
+                
+                astronaut.position.set(newX, newY, targetZ);
+                
+                // 讓太空人稍微轉向移動方向 (選用，增加生動感)
+                // astronaut.lookAt(newX, newY, targetZ + 10); 
             }
         }
 
+        // 3. 放開
         function onPointerUp(event) {
             if (isDraggingAstronaut) {
                 isDraggingAstronaut = false;
-                controls.enabled = true;
+                controls.enabled = true; // 恢復鏡頭控制
                 document.body.style.cursor = 'default';
             }
         }
 
+        // 單擊星球 (保留)
         window.addEventListener('click', (event) => {
-            if(isDraggingAstronaut) return;
+            if(isDraggingAstronaut) return; // 如果剛拖完，不算點擊
+            
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
@@ -411,51 +448,6 @@
             }
         });
 
-        // ==========================================
-        // ★★★ 核心修正：玻璃牆移動邏輯 (Planar Movement) ★★★
-        // ==========================================
-        window.addEventListener('dblclick', (event) => {
-            if (!astronaut) return;
-
-            const marker = document.getElementById('clickMarker');
-            marker.style.left = event.clientX - 20 + 'px';
-            marker.style.top = event.clientY - 20 + 'px';
-            marker.style.display = 'block';
-            marker.style.animation = 'none';
-            marker.offsetHeight; 
-            marker.style.animation = 'ripple 0.5s linear forwards';
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-
-            // 1. 取得當前星球的深度
-            const currentPlanetZ = planetsData[currentPlanetIndex].zOffset;
-            const targetZ = currentPlanetZ + 2; // 太空人所在的平面深度
-
-            // 2. 建立數學上的「隱形玻璃牆」 (平面方程式)
-            // Plane defined by normal (0,0,1) and constant (negative distance from origin)
-            const movementPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
-            
-            // 3. 計算射線與該平面的交點
-            const targetPoint = new THREE.Vector3();
-            raycaster.ray.intersectPlane(movementPlane, targetPoint);
-
-            // 4. 如果有交點，移動太空人
-            if (targetPoint) {
-                // 讓太空人面向目標 (但保持直立，不抬頭)
-                astronaut.lookAt(targetPoint.x, astronaut.position.y, targetPoint.z);
-                
-                const dist = astronaut.position.distanceTo(targetPoint);
-                const duration = dist * 150; 
-
-                new TWEEN.Tween(astronaut.position)
-                    .to({ x: targetPoint.x, y: targetPoint.y, z: targetPoint.z }, duration) // 這裡 y 也跟著動，如果想鎖定地面高度就把 y 拿掉
-                    .easing(TWEEN.Easing.Quadratic.Out)
-                    .start();
-            }
-        });
-
         function flyToPlanet(index) {
             currentPlanetIndex = index;
             const targetPlanet = planetMeshes[index];
@@ -463,7 +455,8 @@
             toggleModal(false);
 
             if (astronaut) {
-                astronaut.position.set(data.pos + 6, -1.0, data.zOffset + 2);
+                // [修正] 自動跟隨位置：右側 +4, 深度 +1.2 (更貼近)
+                astronaut.position.set(data.pos + 4, -1.0, data.zOffset + 1.2);
                 astronaut.rotation.y = -Math.PI / 4;
             }
 
