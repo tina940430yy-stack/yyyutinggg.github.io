@@ -24,7 +24,7 @@
             transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        /* [UPDATED] 右上角操作說明視窗 */
+        /* 右上角操作說明視窗 */
         .instruction-box {
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(10px);
@@ -33,12 +33,11 @@
             padding: 16px;
             color: #fff;
             max-width: 260px;
-            pointer-events: none; /* 讓滑鼠穿透背景 */
+            pointer-events: none; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             transition: opacity 0.5s ease;
             position: relative;
         }
-        /* 讓裡面的按鈕可以被點擊 */
         .instruction-box button { pointer-events: auto; }
         
         .key-badge {
@@ -50,7 +49,7 @@
             min-width: 80px; margin-right: 8px;
         }
 
-        /* 幫助按鈕 (縮小後的問號) */
+        /* 幫助按鈕 */
         .help-btn {
             position: absolute; top: 20px; right: 20px;
             width: 36px; height: 36px; border-radius: 50%;
@@ -58,7 +57,7 @@
             color: #4facfe; display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: all 0.3s;
             z-index: 60; pointer-events: auto;
-            opacity: 0; pointer-events: none; /* 預設隱藏 */
+            opacity: 0; pointer-events: none;
         }
         .help-btn.visible { opacity: 1; pointer-events: auto; }
         .help-btn:hover { background: rgba(79, 172, 254, 0.2); border-color: #4facfe; }
@@ -274,7 +273,6 @@
         scene.add(new THREE.AmbientLight(0x222222, 1));
         scene.add(new THREE.DirectionalLight(0x0044ff, 1.0));
 
-        // 3. 建立星球 & 隱形地板
         const loader = new THREE.TextureLoader();
         const planetMeshes = [];
         
@@ -300,14 +298,6 @@
             planetMeshes.push(mesh);
         });
 
-        const planeGeometry = new THREE.PlaneGeometry(1000, 1000);
-        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.3 }); 
-        const interactionPlane = new THREE.Mesh(planeGeometry, planeMaterial);
-        interactionPlane.rotation.x = -Math.PI / 2;
-        interactionPlane.position.y = -2.5; 
-        interactionPlane.receiveShadow = true; 
-        scene.add(interactionPlane);
-
         // 4. 太空人載入
         let astronaut = null;
         let mixer = null;
@@ -318,11 +308,9 @@
             'astronaut.glb', 
             (gltf) => {
                 astronaut = gltf.scene;
-                // [設定] 大小：2.0 (約地球 1/3)
                 astronaut.scale.set(2.0, 2.0, 2.0); 
                 
                 const earthData = planetsData[2];
-                // [設定] 位置：右側 +6, 高度 -1
                 astronaut.position.set(earthData.pos + 6, -1.0, earthData.zOffset + 2);
                 astronaut.rotation.y = -Math.PI / 4; 
 
@@ -423,7 +411,9 @@
             }
         });
 
-        // 雙擊移動 (2D 鎖定)
+        // ==========================================
+        // ★★★ 核心修正：玻璃牆移動邏輯 (Planar Movement) ★★★
+        // ==========================================
         window.addEventListener('dblclick', (event) => {
             if (!astronaut) return;
 
@@ -439,20 +429,28 @@
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
 
-            const intersects = raycaster.intersectObject(interactionPlane);
-            
-            if (intersects.length > 0) {
-                const point = intersects[0].point;
-                const currentPlanetZ = planetsData[currentPlanetIndex].zOffset;
-                const targetX = point.x;
-                const targetZ = currentPlanetZ + 2; 
+            // 1. 取得當前星球的深度
+            const currentPlanetZ = planetsData[currentPlanetIndex].zOffset;
+            const targetZ = currentPlanetZ + 2; // 太空人所在的平面深度
 
-                astronaut.lookAt(targetX, astronaut.position.y, targetZ);
-                const dist = astronaut.position.distanceTo(new THREE.Vector3(targetX, astronaut.position.y, targetZ));
+            // 2. 建立數學上的「隱形玻璃牆」 (平面方程式)
+            // Plane defined by normal (0,0,1) and constant (negative distance from origin)
+            const movementPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
+            
+            // 3. 計算射線與該平面的交點
+            const targetPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(movementPlane, targetPoint);
+
+            // 4. 如果有交點，移動太空人
+            if (targetPoint) {
+                // 讓太空人面向目標 (但保持直立，不抬頭)
+                astronaut.lookAt(targetPoint.x, astronaut.position.y, targetPoint.z);
+                
+                const dist = astronaut.position.distanceTo(targetPoint);
                 const duration = dist * 150; 
 
                 new TWEEN.Tween(astronaut.position)
-                    .to({ x: targetX, z: targetZ }, duration)
+                    .to({ x: targetPoint.x, y: targetPoint.y, z: targetPoint.z }, duration) // 這裡 y 也跟著動，如果想鎖定地面高度就把 y 拿掉
                     .easing(TWEEN.Easing.Quadratic.Out)
                     .start();
             }
@@ -465,7 +463,6 @@
             toggleModal(false);
 
             if (astronaut) {
-                // [設定] 切換星球時，太空人順移到右側 +6
                 astronaut.position.set(data.pos + 6, -1.0, data.zOffset + 2);
                 astronaut.rotation.y = -Math.PI / 4;
             }
@@ -486,8 +483,6 @@
         const modal = document.getElementById('infoModal');
         const menuContainer = document.getElementById('menuContainer');
         const closeBtn = document.getElementById('closeBtn');
-        
-        // [NEW] 說明視窗控制
         const instBox = document.getElementById('instBox');
         const closeInstBtn = document.getElementById('closeInstBtn');
         const helpBtn = document.getElementById('helpBtn');
@@ -500,10 +495,7 @@
 
         helpBtn.addEventListener('click', () => {
             instBox.style.opacity = '1';
-            instBox.style.pointerEvents = 'auto'; // 這裡要設為 auto 否則裡面的按鈕不能點
-            // 注意：外層 CSS 有設 pointer-events: none (為了穿透)，所以這裡 JS 控制回來
-            // 其實只要 instruction-box 本身有 pointer-events: none，但裡面的 button 有 auto 即可
-            // 為了簡單，這裡不改 pointerEvents，只改 opacity，因為 close 按鈕一直都是 auto
+            instBox.style.pointerEvents = 'auto'; 
             helpBtn.classList.remove('visible');
         });
 
