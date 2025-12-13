@@ -3,38 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>浩瀚星際：互動星球介紹</title>
+    <title>浩瀚星際：最終優化版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background-color: #050510; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        body { margin: 0; overflow: hidden; background-color: #0a0a1a; font-family: 'Segoe UI', sans-serif; user-select: none; }
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
         .ui-layer { position: absolute; z-index: 10; pointer-events: none; width: 100%; height: 100%; }
         .interactive { pointer-events: auto; }
 
-        /* 介紹視窗 */
         .glass-panel {
-            background: rgba(15, 20, 35, 0.9);
+            background: rgba(20, 30, 50, 0.85);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(100, 200, 255, 0.3);
+            border: 1px solid rgba(120, 220, 255, 0.4);
             border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
             transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        /* 操作說明 */
         .instruction-box {
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(10, 15, 30, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 12px;
             padding: 16px;
             color: #fff;
-            max-width: 260px;
+            max-width: 280px; /* 稍微加寬以容納文字 */
             pointer-events: none; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 25px rgba(0,0,0,0.6);
             transition: opacity 0.5s ease;
             position: relative;
         }
@@ -42,61 +40,80 @@
         
         .key-badge {
             display: inline-flex; align-items: center; justify-content: center;
-            background: rgba(79, 172, 254, 0.2);
-            border: 1px solid rgba(79, 172, 254, 0.4);
+            background: rgba(79, 172, 254, 0.3);
+            border: 1px solid rgba(79, 172, 254, 0.6);
             border-radius: 6px; padding: 4px 8px;
-            font-size: 11px; font-weight: bold; color: #4facfe;
+            font-size: 11px; font-weight: bold; color: #e0f0ff;
             min-width: 80px; margin-right: 8px;
         }
 
-        /* 幫助按鈕 */
         .help-btn {
             position: absolute; top: 20px; right: 20px;
             width: 36px; height: 36px; border-radius: 50%;
-            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(20, 30, 50, 0.8); border: 1px solid rgba(255, 255, 255, 0.4);
             color: #4facfe; display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: all 0.3s;
             z-index: 60; pointer-events: auto;
             opacity: 0; pointer-events: none;
         }
         .help-btn.visible { opacity: 1; pointer-events: auto; }
-        .help-btn:hover { background: rgba(79, 172, 254, 0.2); border-color: #4facfe; }
+        .help-btn:hover { background: rgba(79, 172, 254, 0.4); border-color: #fff; }
 
-        /* 下方選單 */
+        /* [NEW] 旋轉按鈕 (右下角) */
+        .rotate-controls {
+            position: absolute; bottom: 140px; right: 20px;
+            display: flex; gap: 10px; z-index: 50;
+            pointer-events: auto;
+        }
+        .rotate-btn {
+            width: 50px; height: 50px; border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(79, 172, 254, 0.5);
+            color: #fff; font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+        .rotate-btn:active { background: rgba(79, 172, 254, 0.4); transform: scale(0.95); }
+
         .planet-btn {
             width: 60px; height: 60px; border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
             background-size: cover; background-position: center;
-            transition: all 0.4s; cursor: pointer; flex-shrink: 0; position: relative; background-color: #000;
+            background-repeat: no-repeat;
+            transition: all 0.4s; cursor: pointer; flex-shrink: 0; position: relative; 
+            background-color: #111; 
+            background-blend-mode: screen; 
         }
         .planet-btn.active {
             transform: scale(1.3) translateY(-10px);
             border-color: #4facfe;
-            box-shadow: 0 0 30px rgba(79, 172, 254, 0.8);
+            box-shadow: 0 0 35px rgba(79, 172, 254, 1.0);
             z-index: 20;
+            background-color: #333;
         }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         #loader {
-            position: fixed; inset: 0; background: #000000; z-index: 999;
+            position: fixed; inset: 0; background: #050510; z-index: 999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             transition: opacity 1s ease-out;
         }
         
-        /* 游標樣式 */
         .cursor-grab { cursor: grab; }
         .cursor-grabbing { cursor: grabbing; }
+        .cursor-rotate { cursor: alias; }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
     <div id="loader">
         <div class="relative w-24 h-24 mb-6">
             <div class="absolute inset-0 border-4 border-blue-900/30 rounded-full"></div>
             <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
         </div>
-        <div class="text-blue-200 text-xs tracking-[0.5em] font-light animate-pulse">LOADING SYSTEM</div>
+        <div class="text-blue-200 text-xs tracking-[0.5em] font-light animate-pulse">LOADING UNIVERSE</div>
     </div>
 
     <div id="canvas-container"></div>
@@ -109,51 +126,48 @@
         
         <div class="flex justify-between items-start w-full">
             <div class="mt-2 ml-2">
-                <h1 class="text-white font-bold text-4xl tracking-widest drop-shadow-2xl" style="font-family: 'Impact', sans-serif; background: linear-gradient(to bottom, #fff, #99ccff); -webkit-background-clip: text; color: transparent;">THE COSMOS</h1>
-                <p class="text-blue-400/80 text-[10px] mt-1 tracking-[0.4em] uppercase">Interactive Exhibition</p>
+                <h1 class="text-white font-bold text-4xl tracking-widest drop-shadow-2xl" style="font-family: 'Impact', sans-serif; background: linear-gradient(to bottom, #ffffff, #c2e0ff); -webkit-background-clip: text; color: transparent;">THE COSMOS</h1>
+                <p class="text-blue-300/90 text-[10px] mt-1 tracking-[0.4em] uppercase">Interactive Exhibition</p>
             </div>
 
             <div id="instBox" class="instruction-box mt-2 mr-2 transition-all duration-500">
-                <button id="closeInstBtn" class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-white/40 hover:text-white transition-colors">
+                <button id="closeInstBtn" class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-white/50 hover:text-white transition-colors">
                     <i class="fas fa-times"></i>
                 </button>
 
-                <h3 class="text-blue-300 text-xs font-bold tracking-widest mb-3 uppercase border-b border-white/10 pb-2 flex items-center">
+                <h3 class="text-blue-200 text-xs font-bold tracking-widest mb-3 uppercase border-b border-white/20 pb-2 flex items-center">
                     <i class="fas fa-gamepad mr-2"></i> 操作說明 CONTROLS
                 </h3>
-                <ul class="space-y-3 text-xs text-gray-300 font-light">
-                    <li class="flex items-center">
-                        <span class="key-badge"><i class="fas fa-hand-rock mr-1"></i> 按住拖曳</span> 
-                        <span>移動太空人位置</span>
-                    </li>
-                    <li class="flex items-center">
-                        <span class="key-badge"><i class="fas fa-globe mr-1"></i> 單點星球</span> 
-                        <span>查看星球資訊</span>
-                    </li>
-                    <li class="flex items-center">
-                        <span class="key-badge"><i class="fas fa-hand-paper mr-1"></i> 拖曳背景</span> 
-                        <span>旋轉攝影機視角</span>
-                    </li>
+                <ul class="space-y-3 text-xs text-gray-200 font-light">
+                    <li class="flex items-center"><span class="key-badge"><i class="fas fa-mouse-pointer mr-1"></i> 左鍵拖曳</span> <span>移動太空人</span></li>
+                    <li class="flex items-center"><span class="key-badge"><i class="fas fa-sync-alt mr-1"></i> 右鍵 / 按鈕</span> <span>旋轉太空人</span></li>
+                    <li class="flex items-center"><span class="key-badge"><i class="fas fa-globe mr-1"></i> 單點星球</span> <span>查看星球資訊</span></li>
+                    <li class="flex items-center"><span class="key-badge"><i class="fas fa-hand-paper mr-1"></i> 拖曳背景</span> <span>旋轉攝影機</span></li>
                 </ul>
             </div>
         </div>
 
+        <div class="rotate-controls">
+            <button id="rotLeftBtn" class="rotate-btn"><i class="fas fa-undo"></i></button>
+            <button id="rotRightBtn" class="rotate-btn"><i class="fas fa-redo"></i></button>
+        </div>
+
         <div id="infoModal" class="glass-panel absolute top-1/2 left-4 md:left-12 -translate-y-1/2 w-[90%] max-w-[360px] p-8 opacity-0 translate-x-[-40px] pointer-events-none transition-all duration-500">
-            <button id="closeBtn" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/20 hover:text-white transition-all interactive">
+            <button id="closeBtn" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/30 hover:text-white transition-all interactive">
                 <i class="fas fa-times text-lg"></i>
             </button>
-            <div class="absolute -top-4 -right-2 text-[100px] font-bold text-white/5 pointer-events-none select-none" id="mBgNum" style="font-family: Impact;">01</div>
+            <div class="absolute -top-4 -right-2 text-[100px] font-bold text-white/10 pointer-events-none select-none" id="mBgNum" style="font-family: Impact;">01</div>
             <h2 id="mName" class="text-4xl font-bold text-white mb-1 drop-shadow-md">PLANET</h2>
-            <p id="mEn" class="text-cyan-400 text-xs font-bold tracking-[0.25em] mb-6 uppercase">System</p>
-            <div class="h-[1px] w-full bg-gradient-to-r from-cyan-500/50 to-transparent mb-6"></div>
-            <p id="mDesc" class="text-gray-200 text-sm leading-7 mb-8 font-light text-justify tracking-wide">Description...</p>
+            <p id="mEn" class="text-cyan-300 text-xs font-bold tracking-[0.25em] mb-6 uppercase">System</p>
+            <div class="h-[1px] w-full bg-gradient-to-r from-cyan-400/60 to-transparent mb-6"></div>
+            <p id="mDesc" class="text-gray-100 text-sm leading-7 mb-8 font-light text-justify tracking-wide">Description...</p>
             <div class="grid grid-cols-2 gap-4">
-                <div class="bg-blue-900/20 rounded-xl p-3 border border-blue-500/20 backdrop-blur-sm">
-                    <div class="text-[10px] text-blue-300/70 mb-1 uppercase tracking-wider">Type</div>
+                <div class="bg-blue-800/30 rounded-xl p-3 border border-blue-400/30 backdrop-blur-sm">
+                    <div class="text-[10px] text-blue-200/80 mb-1 uppercase tracking-wider">Type</div>
                     <div id="mTag1" class="text-sm text-white font-medium">Data</div>
                 </div>
-                <div class="bg-purple-900/20 rounded-xl p-3 border border-purple-500/20 backdrop-blur-sm">
-                    <div class="text-[10px] text-purple-300/70 mb-1 uppercase tracking-wider">Distance</div>
+                <div class="bg-purple-800/30 rounded-xl p-3 border border-purple-400/30 backdrop-blur-sm">
+                    <div class="text-[10px] text-purple-200/80 mb-1 uppercase tracking-wider">Distance</div>
                     <div id="mTag2" class="text-sm text-white font-medium">Data</div>
                 </div>
             </div>
@@ -180,54 +194,88 @@
 
         // 1. 資料設定
         const planetsData = [
-            { id: 'mercury', name: '水星', en: 'MERCURY', desc: '最接近太陽的行星。表面佈滿隕石坑。白天溫度高達 430°C，晚上則驟降至 -180°C。', tag1: '岩石行星', tag2: '0.39 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/3/30/Mercury_in_color_-_Prockter07_centered.jpg', size: 0.8, pos: 0, zOffset: 8 },
-            { id: 'venus', name: '金星', en: 'VENUS', desc: '夜空中最亮的天體，擁有極厚重的二氧化碳大氣層，是太陽系最熱的行星（465°C）。', tag1: '岩石行星', tag2: '0.72 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/0/02/Venus_globe_-_magellan_radar_1024.jpg', size: 1.2, pos: 25, zOffset: -12 },
-            { id: 'earth', name: '地球', en: 'EARTH', desc: '我們的家園，唯一已知存在生命的藍色星球。71% 的表面被海洋覆蓋。', tag1: '生命搖籃', tag2: '1.00 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/c/c3/Solarsystemscope_texture_2k_earth_daymap.jpg', size: 1.3, pos: 50, zOffset: 10 },
-            { id: 'mars', name: '火星', en: 'MARS', desc: '富含氧化鐵的「紅色星球」。擁有太陽系最高的奧林帕斯火山。', tag1: '岩石行星', tag2: '1.52 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg', size: 1.0, pos: 75, zOffset: -18 },
-            { id: 'jupiter', name: '木星', en: 'JUPITER', desc: '巨大的氣態行星，體積可容納 1300 個地球。擁有標誌性的「大紅斑」風暴。', tag1: '氣態巨星', tag2: '5.20 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Jupiter.jpg', size: 3.5, pos: 115, zOffset: 12 },
-            { id: 'saturn', name: '土星', en: 'SATURN', desc: '以其夢幻般的冰環系統聞名。密度極低，理論上可以浮在水面上。', tag1: '氣態巨星', tag2: '9.58 AU', tex: 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Saturn_%28planet%29_large.jpg', size: 3.0, pos: 155, zOffset: -22, ring: true }
+            { 
+                id: 'mercury', name: '水星', en: 'MERCURY', 
+                desc: '最接近太陽的行星。表面佈滿隕石坑。白天溫度高達 430°C，晚上則驟降至 -180°C。', tag1: '岩石行星', tag2: '0.39 AU', 
+                pos: 0, zOffset: 8,
+                model: 'mercury.glb', modelScale: 10.0, 
+                icon: 'mercury_icon.jpg' 
+            },
+            { 
+                id: 'venus', name: '金星', en: 'VENUS', 
+                desc: '夜空中最亮的天體，擁有極厚重的二氧化碳大氣層，是太陽系最熱的行星（465°C）。', tag1: '岩石行星', tag2: '0.72 AU', 
+                pos: 25, zOffset: -12,
+                model: 'venus.glb', modelScale: 12.0, 
+                icon: 'venus_icon.jpg' 
+            },
+            { 
+                id: 'earth', name: '地球', en: 'EARTH', 
+                desc: '我們的家園，唯一已知存在生命的藍色星球。71% 的表面被海洋覆蓋。', tag1: '生命搖籃', tag2: '1.00 AU', 
+                pos: 50, zOffset: 10,
+                model: 'earth.glb', modelScale: 13.0, 
+                icon: 'earth_icon.jpg' 
+            },
+            { 
+                id: 'mars', name: '火星', en: 'MARS', 
+                desc: '富含氧化鐵的「紅色星球」。擁有太陽系最高的奧林帕斯火山。', tag1: '岩石行星', tag2: '1.52 AU', 
+                pos: 75, zOffset: -18,
+                model: 'mars.glb', modelScale: 11.0, 
+                icon: 'mars_icon.jpg' 
+            },
+            { 
+                id: 'jupiter', name: '木星', en: 'JUPITER', 
+                desc: '巨大的氣態行星，體積可容納 1300 個地球。擁有標誌性的「大紅斑」風暴。', tag1: '氣態巨星', tag2: '5.20 AU', 
+                pos: 115, zOffset: 12,
+                model: 'jupiter.glb', modelScale: 24.0, 
+                icon: 'jupiter_icon.jpg' 
+            },
+            { 
+                id: 'saturn', name: '土星', en: 'SATURN', 
+                desc: '以其夢幻般的冰環系統聞名。密度極低，理論上可以浮在水面上。', tag1: '氣態巨星', tag2: '9.58 AU', 
+                pos: 155, zOffset: -22, 
+                model: 'saturn.glb', modelScale: 20.0, 
+                icon: 'saturn_icon.jpg' 
+            }
         ];
 
-        let currentPlanetIndex = 2; // 預設地球
+        let currentPlanetIndex = 2; 
 
         // 2. 場景
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050510);
-        scene.fog = new THREE.FogExp2(0x050510, 0.002);
+        scene.background = new THREE.Color(0x0a0a1a); 
+        scene.fog = new THREE.FogExp2(0x0a0a1a, 0.0015); 
 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 4000); 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2; 
         renderer.shadowMap.enabled = true; 
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.minDistance = 5; 
-        controls.maxDistance = 200;
+        controls.minDistance = 10; 
+        controls.maxDistance = 500;
 
         function createBlueNebulaBackground() {
             const starGeo = new THREE.BufferGeometry();
-            const starCount = 3000;
+            const starCount = 8000; 
             const starPos = new Float32Array(starCount * 3);
-            for(let i=0; i<starCount*3; i++) starPos[i] = (Math.random() - 0.5) * 1500;
+            for(let i=0; i<starCount*3; i++) starPos[i] = (Math.random() - 0.5) * 2000; 
             starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-            const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.8, transparent: true, opacity: 0.8});
+            const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 1.2, transparent: true, opacity: 1.0});
             scene.add(new THREE.Points(starGeo, starMat));
 
-            const particleCount = 1000;
+            const particleCount = 1500; 
             const particleGeo = new THREE.BufferGeometry();
             const particlePos = new Float32Array(particleCount * 3);
             const particleColors = new Float32Array(particleCount * 3);
-            const color1 = new THREE.Color(0x0066ff); const color2 = new THREE.Color(0x6600ff);
-            
+            const color1 = new THREE.Color(0x2288ff); const color2 = new THREE.Color(0x8822ff); 
             for(let i=0; i<particleCount; i++) {
-                const r = 400 + Math.random() * 400;
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.acos(2 * Math.random() - 1);
+                const r = 500 + Math.random() * 500; const theta = Math.random() * Math.PI * 2; const phi = Math.acos(2 * Math.random() - 1);
                 particlePos[i*3] = r * Math.sin(phi) * Math.cos(theta);
                 particlePos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
                 particlePos[i*3+2] = r * Math.cos(phi);
@@ -236,70 +284,78 @@
             }
             particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
             particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
-
             const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
             const ctx = canvas.getContext('2d');
             const grad = ctx.createRadialGradient(16,16,0,16,16,16);
-            grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.2)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+            grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.5, 'rgba(200,220,255,0.3)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = grad; ctx.fillRect(0,0,32,32);
             const texture = new THREE.CanvasTexture(canvas);
-            const particleMat = new THREE.PointsMaterial({ size: 8, map: texture, vertexColors: true, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending });
+            const particleMat = new THREE.PointsMaterial({ size: 10, map: texture, vertexColors: true, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
             scene.add(new THREE.Points(particleGeo, particleMat));
         }
         createBlueNebulaBackground();
 
-        const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
-        sunLight.position.set(-50, 50, 50);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 3.5); 
+        sunLight.position.set(-100, 100, 100);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048; sunLight.shadow.mapSize.height = 2048;
-        sunLight.shadow.camera.near = 0.5; sunLight.shadow.camera.far = 500;
-        sunLight.shadow.camera.left = -100; sunLight.shadow.camera.right = 100; sunLight.shadow.camera.top = 100; sunLight.shadow.camera.bottom = -100;
+        sunLight.shadow.mapSize.width = 4096; sunLight.shadow.mapSize.height = 4096; 
+        sunLight.shadow.camera.near = 0.5; sunLight.shadow.camera.far = 1000;
+        sunLight.shadow.camera.left = -200; sunLight.shadow.camera.right = 200; sunLight.shadow.camera.top = 200; sunLight.shadow.camera.bottom = -200;
         scene.add(sunLight);
-        scene.add(new THREE.AmbientLight(0x222222, 1));
-        scene.add(new THREE.DirectionalLight(0x0044ff, 1.0));
+        scene.add(new THREE.AmbientLight(0x404050, 3.0)); 
+        scene.add(new THREE.DirectionalLight(0x4477ff, 1.5));
 
-        const loader = new THREE.TextureLoader();
+        // 3. 建立星球
         const planetMeshes = [];
+        const gltfLoader = new GLTFLoader();
         
-        planetsData.forEach(data => {
-            const geometry = new THREE.SphereGeometry(data.size, 64, 64);
-            const material = new THREE.MeshStandardMaterial({ map: loader.load(data.tex), roughness: 0.8, metalness: 0.1 });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.set(data.pos, 0, data.zOffset);
-            mesh.castShadow = true; mesh.receiveShadow = true;
-            mesh.userData = { isPlanet: true, index: planetsData.indexOf(data) };
-
-            if(data.ring) {
-                const ringGeo = new THREE.RingGeometry(data.size * 1.4, data.size * 2.6, 64);
-                const ringMat = new THREE.MeshStandardMaterial({ color: 0xc4b098, side: THREE.DoubleSide, transparent: true, opacity: 0.9, map: loader.load('https://i.imgur.com/4xT8zQZ.png') });
-                const v3 = new THREE.Vector3(); const pos = ringGeo.attributes.position;
-                for (let i = 0; i < pos.count; i++) { v3.fromBufferAttribute(pos, i); ringGeo.attributes.uv.setXY(i, v3.length() < data.size * 2.0 ? 0 : 1, 1); }
-                const ring = new THREE.Mesh(ringGeo, ringMat);
-                ring.rotation.x = Math.PI / 2; mesh.add(ring);
-                mesh.rotation.z = Math.PI / 8; mesh.rotation.x = Math.PI / 8;
-                ring.receiveShadow = true;
-            }
-            scene.add(mesh);
-            planetMeshes.push(mesh);
+        planetsData.forEach((data, index) => {
+            gltfLoader.load(
+                data.model,
+                (gltf) => {
+                    const model = gltf.scene;
+                    model.position.set(data.pos, 0, data.zOffset);
+                    model.scale.set(data.modelScale, data.modelScale, data.modelScale);
+                    model.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+                    model.userData = { isPlanet: true, index: index };
+                    model.traverse(child => { if (child.isMesh) { child.userData = { isPlanet: true, index: index, parentGroup: model }; } });
+                    scene.add(model);
+                    planetMeshes[index] = model;
+                },
+                undefined,
+                (error) => {
+                    console.error(`無法載入星球模型: ${data.model}`, error);
+                    const geo = new THREE.SphereGeometry(5, 32, 32); 
+                    const mat = new THREE.MeshStandardMaterial({color: 0x888888, wireframe: true});
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.set(data.pos, 0, data.zOffset);
+                    mesh.userData = { isPlanet: true, index: index };
+                    scene.add(mesh);
+                    planetMeshes[index] = mesh;
+                }
+            );
         });
 
-        // 4. 太空人載入
+        const planeGeometry = new THREE.PlaneGeometry(10000, 10000);
+        const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0 }); 
+        const interactionPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+        interactionPlane.rotation.x = -Math.PI / 2;
+        interactionPlane.position.y = -5.0; 
+        scene.add(interactionPlane);
+
+        // 4. 太空人載入 (GLB)
         let astronaut = null;
         let mixer = null;
 
-        const gltfLoader = new GLTFLoader();
-        
         gltfLoader.load(
             'astronaut.glb', 
             (gltf) => {
                 astronaut = gltf.scene;
-                
-                // [修正] 大小: 1.3 (比之前的 2.0 小 1/3)
-                astronaut.scale.set(1.3, 1.3, 1.3); 
+                // 【修改】太空人大小：19.2的一半 = 9.6
+                astronaut.scale.set(9.6, 9.6, 9.6); 
                 
                 const earthData = planetsData[2];
-                // [修正] 距離: zOffset + 1.0 (比之前的 +2 更近，貼著星球)
-                astronaut.position.set(earthData.pos + 4, -1.0, earthData.zOffset + 1.0);
+                astronaut.position.set(earthData.pos + 16, -2.0, earthData.zOffset + 2.0);
                 astronaut.rotation.y = -Math.PI / 4; 
 
                 astronaut.traverse(c => { 
@@ -323,7 +379,7 @@
             (error) => {
                 console.error(error);
                 alert("找不到 astronaut.glb！");
-                const geo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+                const geo = new THREE.CapsuleGeometry(2, 4, 8, 16); 
                 const mat = new THREE.MeshStandardMaterial({ color: 0xffffff });
                 astronaut = new THREE.Mesh(geo, mat);
                 astronaut.position.set(50, -1.5, 10);
@@ -332,15 +388,15 @@
             }
         );
 
-        // 5. 互動控制 (全新拖曳系統)
+        // 5. 互動控制 (左鍵移動、右鍵旋轉)
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         
-        // 狀態變數
-        let isDraggingAstronaut = false;
-        let dragOffset = new THREE.Vector3(); // 滑鼠點擊點與太空人中心的偏差
+        let isMovingAstronaut = false;   // 左鍵拖曳
+        let isRotatingAstronaut = false; // 右鍵拖曳
+        let dragOffset = new THREE.Vector3();
+        let previousMouseX = 0;
 
-        // 事件監聽 (支援滑鼠與觸控)
         window.addEventListener('mousedown', onPointerDown);
         window.addEventListener('mousemove', onPointerMove);
         window.addEventListener('mouseup', onPointerUp);
@@ -348,128 +404,160 @@
         window.addEventListener('touchmove', onPointerMove, {passive: false});
         window.addEventListener('touchend', onPointerUp);
 
-        // 1. 按下
+        // UI按鈕旋轉邏輯
+        const rotLeftBtn = document.getElementById('rotLeftBtn');
+        const rotRightBtn = document.getElementById('rotRightBtn');
+        let rotateInterval;
+
+        function startRotating(direction) {
+            if(!astronaut) return;
+            clearInterval(rotateInterval);
+            rotateInterval = setInterval(() => {
+                astronaut.rotation.y += direction * 0.05;
+            }, 16);
+        }
+        function stopRotating() { clearInterval(rotateInterval); }
+
+        rotLeftBtn.addEventListener('mousedown', () => startRotating(1));
+        rotLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRotating(1); });
+        rotRightBtn.addEventListener('mousedown', () => startRotating(-1));
+        rotRightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRotating(-1); });
+        
+        window.addEventListener('mouseup', stopRotating);
+        window.addEventListener('touchend', stopRotating);
+
         function onPointerDown(event) {
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
             
+            // 判斷按鍵：0=左鍵/觸控, 2=右鍵
+            const isRightClick = (event.button === 2);
+
             mouse.x = (clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-            
             raycaster.setFromCamera(mouse, camera);
 
-            // 檢查是否點到太空人
             if (astronaut) {
                 const intersects = raycaster.intersectObject(astronaut, true);
                 if (intersects.length > 0) {
-                    isDraggingAstronaut = true;
                     controls.enabled = false; // 暫停鏡頭控制
-                    document.body.style.cursor = 'grabbing';
                     
-                    // 計算點擊點與太空人的位移差 (讓拖曳更自然)
-                    // 我們需要一個參考平面 (Reference Plane) 在太空人的 Z 深度
-                    const currentZ = astronaut.position.z;
-                    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -currentZ);
-                    const intersectPoint = new THREE.Vector3();
-                    raycaster.ray.intersectPlane(dragPlane, intersectPoint);
-                    
-                    if (intersectPoint) {
-                        dragOffset.subVectors(astronaut.position, intersectPoint);
+                    if (isRightClick) {
+                        // 右鍵 -> 旋轉模式
+                        isRotatingAstronaut = true;
+                        previousMouseX = clientX;
+                        document.body.style.cursor = 'alias'; // 旋轉游標
+                    } else {
+                        // 左鍵 -> 移動模式
+                        isMovingAstronaut = true;
+                        document.body.style.cursor = 'grabbing';
+                        
+                        const currentZ = astronaut.position.z;
+                        const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -currentZ);
+                        const intersectPoint = new THREE.Vector3();
+                        raycaster.ray.intersectPlane(dragPlane, intersectPoint);
+                        
+                        if (intersectPoint) {
+                            dragOffset.subVectors(astronaut.position, intersectPoint);
+                        }
                     }
-                    return; // 阻止事件穿透
+                    return; 
                 }
             }
         }
 
-        // 2. 移動 (拖曳中)
         function onPointerMove(event) {
-            if (!isDraggingAstronaut || !astronaut) return;
-            
-            // 防止手機滾動頁面
-            if(event.preventDefault) event.preventDefault();
+            if (!isMovingAstronaut && !isRotatingAstronaut) return;
+            if (event.preventDefault) event.preventDefault();
 
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
 
-            mouse.x = (clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-            
-            raycaster.setFromCamera(mouse, camera);
+            // 旋轉邏輯
+            if (isRotatingAstronaut && astronaut) {
+                const deltaX = clientX - previousMouseX;
+                astronaut.rotation.y += deltaX * 0.01;
+                previousMouseX = clientX;
+                return;
+            }
 
-            // 建立虛擬移動平面 (鎖定在當前星球的深度前方)
-            // 這樣太空人只會上下左右動，不會前後跑
-            const currentPlanetZ = planetsData[currentPlanetIndex].zOffset;
-            const targetZ = currentPlanetZ + 1.2; // 鎖定深度
-            
-            const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
-            const targetPoint = new THREE.Vector3();
-            
-            raycaster.ray.intersectPlane(dragPlane, targetPoint);
+            // 移動邏輯
+            if (isMovingAstronaut && astronaut) {
+                mouse.x = (clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
 
-            if (targetPoint) {
-                // 更新位置 (加上偏移量，讓手感更好)
-                // 這裡我們稍微平滑移動 (Lerp) 
-                const newX = targetPoint.x + dragOffset.x;
-                const newY = targetPoint.y + dragOffset.y;
+                const currentPlanetZ = planetsData[currentPlanetIndex].zOffset;
+                const targetZ = currentPlanetZ + 3.0; 
                 
-                astronaut.position.set(newX, newY, targetZ);
-                
-                // 讓太空人稍微轉向移動方向 (選用，增加生動感)
-                // astronaut.lookAt(newX, newY, targetZ + 10); 
+                const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
+                const targetPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, targetPoint);
+
+                if (targetPoint) {
+                    const newX = targetPoint.x + dragOffset.x;
+                    const newY = targetPoint.y + dragOffset.y;
+                    astronaut.position.set(newX, newY, targetZ);
+                }
             }
         }
 
-        // 3. 放開
         function onPointerUp(event) {
-            if (isDraggingAstronaut) {
-                isDraggingAstronaut = false;
-                controls.enabled = true; // 恢復鏡頭控制
+            if (isMovingAstronaut || isRotatingAstronaut) {
+                isMovingAstronaut = false;
+                isRotatingAstronaut = false;
+                controls.enabled = true;
                 document.body.style.cursor = 'default';
             }
         }
 
-        // 單擊星球 (保留)
         window.addEventListener('click', (event) => {
-            if(isDraggingAstronaut) return; // 如果剛拖完，不算點擊
+            if(isMovingAstronaut || isRotatingAstronaut) return;
             
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
 
-            const intersects = raycaster.intersectObjects(planetMeshes);
+            const validPlanets = planetMeshes.filter(m => m !== undefined);
+            const intersects = raycaster.intersectObjects(validPlanets, true);
+
             if (intersects.length > 0) {
                 let target = intersects[0].object;
-                if(!target.userData.isPlanet && target.parent.userData.isPlanet) target = target.parent;
-                if(target.userData.isPlanet) {
-                    flyToPlanet(target.userData.index);
-                    document.querySelectorAll('.planet-btn').forEach(b => b.classList.remove('active'));
-                    menuContainer.children[target.userData.index].classList.add('active');
+                while(target) {
+                    if (target.userData && target.userData.isPlanet) {
+                        flyToPlanet(target.userData.index);
+                        document.querySelectorAll('.planet-btn').forEach(b => b.classList.remove('active'));
+                        menuContainer.children[target.userData.index].classList.add('active');
+                        break;
+                    }
+                    target = target.parent;
                 }
             }
         });
 
         function flyToPlanet(index) {
             currentPlanetIndex = index;
+            if (!planetMeshes[index]) return;
+            
             const targetPlanet = planetMeshes[index];
             const data = planetsData[index];
             toggleModal(false);
 
             if (astronaut) {
-                // [修正] 自動跟隨位置：右側 +4, 深度 +1.2 (更貼近)
-                astronaut.position.set(data.pos + 4, -1.0, data.zOffset + 1.2);
+                astronaut.position.set(data.pos + 16, -2.0, data.zOffset + 2.0);
                 astronaut.rotation.y = -Math.PI / 4;
             }
 
-            const dist = data.size * 5.0; 
-            const offsetX = data.size * 0.2;
-            const targetPos = { x: targetPlanet.position.x + offsetX, y: data.size * 0.3, z: targetPlanet.position.z + dist };
+            const dist = 4.0 * data.modelScale; 
+            const offsetX = 0.8 * data.modelScale;
+            const targetPos = { x: targetPlanet.position.x + offsetX, y: data.modelScale * 0.2, z: targetPlanet.position.z + dist };
             
-            new TWEEN.Tween(camera.position).to(targetPos, 2000).easing(TWEEN.Easing.Cubic.InOut)
+            new TWEEN.Tween(camera.position).to(targetPos, 2500).easing(TWEEN.Easing.Cubic.InOut)
                 .onUpdate(() => controls.target.set(targetPlanet.position.x, 0, targetPlanet.position.z))
-                .onComplete(() => { updateModalContent(index); toggleModal(true); controls.minDistance = data.size * 2.5; })
+                .onComplete(() => { updateModalContent(index); toggleModal(true); controls.minDistance = data.modelScale * 1.5; })
                 .start();
 
-            new TWEEN.Tween(controls.target).to({ x: targetPlanet.position.x, y: 0, z: targetPlanet.position.z }, 2000)
+            new TWEEN.Tween(controls.target).to({ x: targetPlanet.position.x, y: 0, z: targetPlanet.position.z }, 2500)
                 .easing(TWEEN.Easing.Cubic.InOut).start();
         }
 
@@ -517,7 +605,7 @@
         planetsData.forEach((p, i) => {
             const btn = document.createElement('div');
             btn.className = 'planet-btn';
-            btn.style.backgroundImage = `url(${p.tex})`;
+            btn.style.backgroundImage = `url(${p.icon})`;
             btn.onclick = () => {
                 document.querySelectorAll('.planet-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -527,10 +615,10 @@
         });
 
         const startIndex = 2; 
-        camera.position.set(0, 20, 100);
+        camera.position.set(0, 40, 150); 
         setTimeout(() => {
             menuContainer.children[startIndex].click();
-        }, 1500);
+        }, 2000);
 
         const clock = new THREE.Clock();
 
@@ -538,7 +626,7 @@
             requestAnimationFrame(animate);
             TWEEN.update(time);
             controls.update();
-            planetMeshes.forEach(m => m.rotation.y += 0.002);
+            planetMeshes.forEach(m => { if(m) m.rotation.y += 0.001; }); 
             if (mixer) mixer.update(clock.getDelta());
             renderer.render(scene, camera);
         }
