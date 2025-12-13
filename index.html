@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>浩瀚星際：最終壓縮支援版</title>
+    <title>浩瀚星際：互動VR星球體驗</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
@@ -188,17 +188,48 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        // [新增] 引入 DRACOLoader
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-        // 1. 資料設定
+        // ==========================================
+        // 1. 資料設定 (Updated: 硬派科普版)
+        // ==========================================
         const planetsData = [
-            { id: 'mercury', name: '水星', en: 'MERCURY', desc: '最接近太陽的行星。表面佈滿隕石坑。', tag1: '岩石行星', tag2: '0.39 AU', pos: 0, zOffset: 8, model: 'mercury.glb', modelScale: 10.0, icon: 'mercury_icon.jpg' },
-            { id: 'venus', name: '金星', en: 'VENUS', desc: '夜空中最亮的天體，擁有極厚重的二氧化碳大氣層。', tag1: '岩石行星', tag2: '0.72 AU', pos: 25, zOffset: -12, model: 'venus.glb', modelScale: 12.0, icon: 'venus_icon.jpg' },
-            { id: 'earth', name: '地球', en: 'EARTH', desc: '我們的家園，唯一已知存在生命的藍色星球。', tag1: '生命搖籃', tag2: '1.00 AU', pos: 50, zOffset: 10, model: 'earth.glb', modelScale: 13.0, icon: 'earth_icon.jpg' },
-            { id: 'mars', name: '火星', en: 'MARS', desc: '富含氧化鐵的「紅色星球」。', tag1: '岩石行星', tag2: '1.52 AU', pos: 75, zOffset: -18, model: 'mars.glb', modelScale: 11.0, icon: 'mars_icon.jpg' },
-            { id: 'jupiter', name: '木星', en: 'JUPITER', desc: '巨大的氣態行星，體積可容納 1300 個地球。', tag1: '氣態巨星', tag2: '5.20 AU', pos: 115, zOffset: 12, model: 'jupiter.glb', modelScale: 24.0, icon: 'jupiter_icon.jpg' },
-            { id: 'saturn', name: '土星', en: 'SATURN', desc: '以其夢幻般的冰環系統聞名。', tag1: '氣態巨星', tag2: '9.58 AU', pos: 155, zOffset: -22, model: 'saturn.glb', modelScale: 20.0, icon: 'saturn_icon.jpg' }
+            { 
+                id: 'mercury', name: '水星', en: 'MERCURY', 
+                desc: '太陽系最小且最內側的行星。擁有巨大的鐵質核心，表面佈滿撞擊坑，因缺乏大氣層調節，晝夜溫差極大（430°C 至 -180°C），地貌神似月球。', 
+                tag1: '岩石行星', tag2: '0.39 AU', 
+                pos: 0, zOffset: 8, model: 'mercury.glb', modelScale: 10.0, icon: 'mercury_icon.jpg' 
+            },
+            { 
+                id: 'venus', name: '金星', en: 'VENUS', 
+                desc: '夜空中最亮的星體。濃厚的大氣層主要由二氧化碳組成，引發失控的溫室效應，表面溫度高達 465°C。其自轉方向與大多數行星相反，且自轉比公轉還慢。', 
+                tag1: '岩石行星', tag2: '0.72 AU', 
+                pos: 25, zOffset: -12, model: 'venus.glb', modelScale: 12.0, icon: 'venus_icon.jpg' 
+            },
+            { 
+                id: 'earth', name: '地球', en: 'EARTH', 
+                desc: '目前已知唯一孕育生命的「金髮女孩星球」。擁有活躍的板塊構造與磁場，保護大氣層免受太陽風剝離。71% 的表面被液態水覆蓋，是藍色的生命搖籃。', 
+                tag1: '生命搖籃', tag2: '1.00 AU', 
+                pos: 50, zOffset: 10, model: 'earth.glb', modelScale: 13.0, icon: 'earth_icon.jpg' 
+            },
+            { 
+                id: 'mars', name: '火星', en: 'MARS', 
+                desc: '地表廣泛分佈氧化鐵而呈現橘紅色。擁有太陽系最高的「奧林帕斯山」與最長的「水手號峽谷」。雖大氣稀薄寒冷，但乾涸河床暗示著遠古時期曾有液態水。', 
+                tag1: '岩石行星', tag2: '1.52 AU', 
+                pos: 75, zOffset: -18, model: 'mars.glb', modelScale: 11.0, icon: 'mars_icon.jpg' 
+            },
+            { 
+                id: 'jupiter', name: '木星', en: 'JUPITER', 
+                desc: '太陽系最大的氣態巨行星，質量是其他行星總和的 2.5 倍。主要由氫與氦組成，其標誌性的「大紅斑」是一個持續數百年、比地球還大的高壓風暴。', 
+                tag1: '氣態巨星', tag2: '5.20 AU', 
+                pos: 115, zOffset: 12, model: 'jupiter.glb', modelScale: 24.0, icon: 'jupiter_icon.jpg' 
+            },
+            { 
+                id: 'saturn', name: '土星', en: 'SATURN', 
+                desc: '以壯麗且複雜的環系統聞名，主要由冰粒與岩石殘骸組成。它是密度最低的行星（小於水）。北極存在著神秘的六角形風暴結構，是大自然的幾何奇蹟。', 
+                tag1: '氣態巨星', tag2: '9.58 AU', 
+                pos: 155, zOffset: -22, model: 'saturn.glb', modelScale: 20.0, icon: 'saturn_icon.jpg' 
+            }
         ];
 
         let currentPlanetIndex = 2; 
@@ -268,12 +299,9 @@
         scene.add(new THREE.AmbientLight(0x404050, 3.0)); 
         scene.add(new THREE.DirectionalLight(0x4477ff, 1.5));
 
-        // 3. 準備 Loader (含 Draco 設定)
+        // 3. Loader
         const gltfLoader = new GLTFLoader();
-        
-        // [新增] 設定 Draco 解碼器
         const dracoLoader = new DRACOLoader();
-        // 使用 Google 的 CDN
         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
         dracoLoader.preload();
         gltfLoader.setDRACOLoader(dracoLoader);
@@ -316,7 +344,7 @@
         interactionPlane.position.y = -5.0; 
         scene.add(interactionPlane);
 
-        // 5. 太空人載入 (GLB + Draco)
+        // 5. 太空人載入 (Size: 9.6)
         let astronaut = null;
         let mixer = null;
 
@@ -346,9 +374,6 @@
 
                 scene.add(astronaut);
                 document.getElementById('loader').style.display = 'none';
-                
-                // 釋放解碼器 (如果只載入這一次)
-                // dracoLoader.dispose(); 
             },
             (xhr) => {},
             (error) => {
