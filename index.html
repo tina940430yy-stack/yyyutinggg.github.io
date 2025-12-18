@@ -117,9 +117,8 @@
         }
         .rotate-btn:active { background: rgba(79, 172, 254, 0.4); transform: scale(0.95); }
 
-        /* [修改] 重置按鈕樣式 - 移至左上角 */
         .restart-btn {
-            margin-top: 15px; /* 與上方計分板的距離 */
+            margin-top: 15px; 
             padding: 8px 20px;
             border-radius: 30px; 
             background: rgba(255, 215, 0, 0.2);
@@ -132,7 +131,7 @@
             cursor: pointer; transition: all 0.2s;
             backdrop-filter: blur(4px);
             box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-            width: fit-content; /* 讓按鈕寬度適應文字 */
+            width: fit-content; 
             pointer-events: auto;
         }
         .restart-btn:hover { background: rgba(255, 215, 0, 0.3); }
@@ -472,6 +471,7 @@
             }
         );
 
+        // UI Logic
         const instList = document.getElementById('instList');
         const tabMobile = document.getElementById('tabMobile');
         const tabDesktop = document.getElementById('tabDesktop');
@@ -481,6 +481,7 @@
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-sync-alt mr-1"></i> 右下角按鈕</span> <span>旋轉太空人</span></li>
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-star mr-1"></i> 點擊星星</span> <span>自動飛行蒐集</span></li>
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-hand-paper mr-1"></i> 拖曳背景</span> <span>旋轉視角</span></li>
+            <li class="flex items-center"><span class="key-badge"><i class="fas fa-compress-arrows-alt mr-1"></i> 兩指縮放</span> <span>調整畫面遠近</span></li>
         `;
         const contentDesktop = `
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-mouse-pointer mr-1"></i> 左鍵拖曳</span> <span>移動太空人</span></li>
@@ -488,6 +489,7 @@
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-globe mr-1"></i> 點擊下方星球</span> <span>查看資訊與抵達</span></li>
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-star mr-1"></i> 點擊星星</span> <span>自動飛行蒐集</span></li>
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-hand-paper mr-1"></i> 拖曳背景</span> <span>旋轉視角</span></li>
+            <li class="flex items-center"><span class="key-badge"><i class="fas fa-mouse mr-1"></i> 滑鼠滾輪</span> <span>調整畫面遠近</span></li>
         `;
         instList.innerHTML = contentMobile;
         tabMobile.addEventListener('click', () => { tabMobile.classList.add('active'); tabDesktop.classList.remove('active'); instList.innerHTML = contentMobile; });
@@ -549,6 +551,7 @@
             const starIntersects = raycaster.intersectObjects(stars);
             if (starIntersects.length > 0) {
                 const targetStar = starIntersects[0].object;
+                
                 new TWEEN.Tween(astronaut.position)
                     .to({ x: targetStar.position.x, y: targetStar.position.y, z: targetStar.position.z + 1.0 }, 1500)
                     .easing(TWEEN.Easing.Cubic.Out)
