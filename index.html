@@ -38,7 +38,7 @@
         }
         .instruction-box button { pointer-events: auto; }
 
-        /* 音效提示視窗樣式 */
+        /* 音效提示視窗 */
         .sound-toast {
             position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
             background: rgba(79, 172, 254, 0.9); color: #fff; padding: 10px 24px;
@@ -46,11 +46,47 @@
             box-shadow: 0 4px 20px rgba(79, 172, 254, 0.4); z-index: 2000;
             display: flex; align-items: center; gap: 10px;
             border: 1px solid rgba(255, 255, 255, 0.4); backdrop-filter: blur(8px);
-            opacity: 0; pointer-events: none; /* 預設隱藏，開始後才顯示 */
+            opacity: 0; pointer-events: none; 
             transition: opacity 1s ease, transform 1s ease;
         }
         .sound-toast.show { opacity: 1; transform: translate(-50%, 0); }
         .sound-toast.fade-out { opacity: 0; transform: translate(-50%, -20px); }
+
+        /* [新增] 勝利結算視窗樣式 */
+        .success-modal {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(20, 30, 50, 0.95);
+            border: 2px solid #ffd700;
+            padding: 40px 60px;
+            border-radius: 24px;
+            text-align: center;
+            color: white;
+            z-index: 3000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+        }
+        .success-modal.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .success-title {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+        .success-count {
+            font-size: 32px;
+            color: #ffd700;
+            font-family: 'Impact', sans-serif;
+            letter-spacing: 2px;
+            display: flex; align-items: center; gap: 10px;
+        }
 
         .tab-container { display: flex; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px; padding-bottom: 8px; gap: 15px; }
         .tab-btn { font-size: 14px; font-weight: bold; color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; }
@@ -77,38 +113,13 @@
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* [修改] Loader 樣式，增加開始按鈕 */
         #loader { position: fixed; inset: 0; background: #050510; z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s ease-out; }
         
         #loadingSpinner { transition: opacity 0.3s; }
         
-        /* 開始按鈕 (預設隱藏) */
-        #startBtn {
-            display: none;
-            padding: 15px 40px;
-            background: transparent;
-            border: 2px solid #4facfe;
-            color: #4facfe;
-            font-family: 'Impact', sans-serif;
-            font-size: 24px;
-            letter-spacing: 4px;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 0 20px rgba(79, 172, 254, 0.2);
-            text-transform: uppercase;
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        #startBtn:hover {
-            background: #4facfe;
-            color: #000;
-            box-shadow: 0 0 40px rgba(79, 172, 254, 0.6);
-        }
-        #startBtn.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        #startBtn { display: none; padding: 15px 40px; background: transparent; border: 2px solid #4facfe; color: #4facfe; font-family: 'Impact', sans-serif; font-size: 24px; letter-spacing: 4px; border-radius: 50px; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 20px rgba(79, 172, 254, 0.2); text-transform: uppercase; opacity: 0; transform: translateY(20px); }
+        #startBtn:hover { background: #4facfe; color: #000; box-shadow: 0 0 40px rgba(79, 172, 254, 0.6); }
+        #startBtn.visible { opacity: 1; transform: translateY(0); }
         
         .cursor-grab { cursor: grab; }
         .cursor-grabbing { cursor: grabbing; }
@@ -130,6 +141,13 @@
 
     <div id="soundToast" class="sound-toast">
         <i class="fas fa-volume-up"></i> 建議開啟聲音體驗更佳
+    </div>
+
+    <div id="successModal" class="success-modal">
+        <div class="success-title">恭喜太空人探險成功</div>
+        <div class="success-count">
+            <i class="fas fa-star text-yellow-400"></i> (15 / 15)
+        </div>
     </div>
 
     <div id="canvas-container"></div>
@@ -213,13 +231,10 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-        // ==========================================
-        // 0. 音效系統 (包含 Preload)
-        // ==========================================
         const bgm = new Audio('bgm.mp3');
         bgm.loop = true;
         bgm.volume = 0.6; 
-        bgm.preload = 'auto'; // [修改] 預加載
+        bgm.preload = 'auto';
 
         const sfxJetpack = new Audio('jetpack.mp3');
         sfxJetpack.loop = true; 
@@ -232,21 +247,15 @@
             sfx.play().catch(e => {}); 
         }
 
-        // [修改] 啟動遊戲與音樂
         function startGame() {
-            // 播放音樂
             bgm.play().catch(e => console.log("BGM Autoplay prevented"));
-            
-            // 隱藏 Loader
             const loader = document.getElementById('loader');
             loader.style.opacity = '0';
             setTimeout(() => { loader.style.display = 'none'; }, 1000);
 
-            // 顯示音效提示
             const toast = document.getElementById('soundToast');
             if(toast) {
                 toast.classList.add('show');
-                // 3秒後淡出
                 setTimeout(() => {
                     toast.classList.add('fade-out');
                     setTimeout(() => { if(toast.parentNode) toast.parentNode.removeChild(toast); }, 1000); 
@@ -254,14 +263,10 @@
             }
         }
 
-        // 綁定 Start 按鈕
         const startBtn = document.getElementById('startBtn');
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        
         startBtn.addEventListener('click', startGame);
         startBtn.addEventListener('touchstart', startGame);
 
-        // 1. 資料設定
         const planetsData = [
             { id: 'mercury', name: '水星', en: 'MERCURY', desc: '太陽系最小且最內側的行星。擁有巨大的鐵質核心，表面佈滿撞擊坑，因缺乏大氣層調節，晝夜溫差極大（430°C 至 -180°C），地貌神似月球。', tag1: '岩石行星', tag2: '0.39 AU', pos: 0, zOffset: 8, model: 'mercury.glb', modelScale: 10.0, icon: 'mercury_icon.jpg' },
             { id: 'venus', name: '金星', en: 'VENUS', desc: '夜空中最亮的星體。濃厚的大氣層主要由二氧化碳組成，引發失控的溫室效應，表面溫度高達 465°C。其自轉方向與大多數行星相反，且自轉比公轉還慢。', tag1: '岩石行星', tag2: '0.72 AU', pos: 25, zOffset: -12, model: 'venus.glb', modelScale: 12.0, icon: 'venus_icon.jpg' },
@@ -275,7 +280,6 @@
         let score = 0; 
         const totalStars = 15; 
 
-        // 2. 場景
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a1a); 
         scene.fog = new THREE.FogExp2(0x0a0a1a, 0.0015); 
@@ -445,8 +449,8 @@
                 const earthData = planetsData[2];
                 astronaut.position.set(earthData.pos + 16, -2.0, earthData.zOffset + 2.0);
                 astronaut.rotation.y = -Math.PI / 4; 
-                astronaut.rotation.x = 0; // Ensure straight
-                astronaut.rotation.z = 0; // Ensure straight
+                astronaut.rotation.x = 0; 
+                astronaut.rotation.z = 0; 
                 astronaut.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
 
                 if (gltf.animations && gltf.animations.length > 0) {
@@ -460,7 +464,6 @@
                 }
                 scene.add(astronaut);
                 
-                // [修改] 隱藏 Loading Spinner，顯示 Start 按鈕
                 document.getElementById('loadingSpinner').style.display = 'none';
                 document.getElementById('startBtn').style.display = 'block';
                 setTimeout(() => { document.getElementById('startBtn').classList.add('visible'); }, 50);
@@ -517,6 +520,16 @@
                     .start();
             }
         });
+
+        // [新增] 顯示勝利視窗函式
+        function showSuccessModal() {
+            const modal = document.getElementById('successModal');
+            playSound('star.mp3', 1.0); // 勝利音效大聲一點
+            modal.classList.add('show');
+            setTimeout(() => {
+                modal.classList.remove('show');
+            }, 3000);
+        }
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
@@ -773,11 +786,16 @@
                     star.rotation.y += 0.02; star.rotation.x += 0.01;
                     if (astronaut.position.distanceTo(star.position) < 8.0) { 
                         createStarExplosion(star.position);
-                        playSound('star.mp3', 0.4); // [修改] 0.6 -> 0.4
+                        playSound('star.mp3', 0.4); // 播放星星音效
                         scene.remove(star);
                         stars.splice(i, 1);
                         score++;
                         scoreText.innerText = `ENERGY: ${score} / ${totalStars}`;
+                        
+                        // [新增] 檢查勝利條件
+                        if (score === totalStars) {
+                            showSuccessModal();
+                        }
                     }
                 }
             }
