@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>浩瀚星際：互動VR星球探險遊戲</title>
+    <title>浩瀚星際：星球VR體驗遊戲</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
@@ -117,6 +117,27 @@
         }
         .rotate-btn:active { background: rgba(79, 172, 254, 0.4); transform: scale(0.95); }
 
+        /* [修改] 重置按鈕樣式 - 移至左上角 */
+        .restart-btn {
+            margin-top: 15px; /* 與上方計分板的距離 */
+            padding: 8px 20px;
+            border-radius: 30px; 
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid rgba(255, 215, 0, 0.8);
+            color: #ffd700; 
+            font-size: 16px;
+            font-weight: bold;
+            display: flex; align-items: center; justify-content: center; 
+            gap: 8px; 
+            cursor: pointer; transition: all 0.2s;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            width: fit-content; /* 讓按鈕寬度適應文字 */
+            pointer-events: auto;
+        }
+        .restart-btn:hover { background: rgba(255, 215, 0, 0.3); }
+        .restart-btn:active { transform: scale(0.95); background: rgba(255, 215, 0, 0.4); }
+
         .planet-btn {
             width: 60px; height: 60px; border-radius: 50%;
             border: 2px solid rgba(255,255,255,0.3);
@@ -172,6 +193,9 @@
                     <i class="fas fa-star animate-pulse"></i>
                     <span id="scoreText">ENERGY: 0 / 15</span>
                 </div>
+                <button id="restartBtn" class="restart-btn" title="重新開始遊戲">
+                    <i class="fas fa-sync-alt"></i> 重新開始
+                </button>
             </div>
 
             <div id="instBox" class="instruction-box mt-2 mr-2 transition-all duration-500">
@@ -269,7 +293,6 @@
         controls.minDistance = 10; 
         controls.maxDistance = 500;
 
-        // 星空背景
         function createBlueNebulaBackground() {
             const starGeo = new THREE.BufferGeometry();
             const starCount = 20000; 
@@ -346,17 +369,23 @@
         const starGeometry = new THREE.OctahedronGeometry(2, 0); 
         const starMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.8, roughness: 0.2, metalness: 0.8 });
 
-        for (let i = 0; i < totalStars; i++) {
-            const star = new THREE.Mesh(starGeometry, starMaterial);
-            const x = (Math.random() - 0.5) * 200 + 50; 
-            const z = (Math.random() - 0.5) * 100;
-            const y = (Math.random() * 20) - 5; 
-            star.position.set(x, y, z);
-            const light = new THREE.PointLight(0xffd700, 1, 10);
-            star.add(light);
-            scene.add(star);
-            stars.push(star);
+        function createStars() {
+            stars.forEach(s => scene.remove(s));
+            stars.length = 0;
+
+            for (let i = 0; i < totalStars; i++) {
+                const star = new THREE.Mesh(starGeometry, starMaterial);
+                const x = (Math.random() - 0.5) * 200 + 50; 
+                const z = (Math.random() - 0.5) * 100;
+                const y = (Math.random() * 20) - 5; 
+                star.position.set(x, y, z);
+                const light = new THREE.PointLight(0xffd700, 1, 10);
+                star.add(light);
+                scene.add(star);
+                stars.push(star);
+            }
         }
+        createStars(); 
 
         const particles = [];
         const particleGeo = new THREE.SphereGeometry(0.3, 8, 8);
@@ -379,6 +408,28 @@
                 p.mesh.material.opacity = p.life;
                 if (p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); }
             }
+            for (let i = explosionParticles.length - 1; i >= 0; i--) {
+                const ep = explosionParticles[i];
+                ep.life -= 0.02;
+                ep.mesh.position.add(ep.velocity);
+                ep.mesh.scale.setScalar(ep.life * 1.5);
+                ep.mesh.material.opacity = ep.life;
+                if (ep.life <= 0) { scene.remove(ep.mesh); explosionParticles.splice(i, 1); }
+            }
+        }
+
+        const explosionParticles = [];
+        const explosionGeo = new THREE.SphereGeometry(0.5, 8, 8);
+        const explosionMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true });
+
+        function createStarExplosion(pos) {
+            for(let i=0; i<20; i++) {
+                const mesh = new THREE.Mesh(explosionGeo, explosionMat.clone());
+                mesh.position.copy(pos);
+                const velocity = new THREE.Vector3((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5);
+                scene.add(mesh);
+                explosionParticles.push({ mesh, velocity, life: 1.0 });
+            }
         }
 
         let astronaut = null;
@@ -392,6 +443,8 @@
                 const earthData = planetsData[2];
                 astronaut.position.set(earthData.pos + 16, -2.0, earthData.zOffset + 2.0);
                 astronaut.rotation.y = -Math.PI / 4; 
+                astronaut.rotation.x = 0; // Ensure straight
+                astronaut.rotation.z = 0; // Ensure straight
                 astronaut.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
 
                 if (gltf.animations && gltf.animations.length > 0) {
@@ -419,11 +472,9 @@
             }
         );
 
-        // UI 切換
         const instList = document.getElementById('instList');
         const tabMobile = document.getElementById('tabMobile');
         const tabDesktop = document.getElementById('tabDesktop');
-
         const contentMobile = `
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-hand-pointer mr-1"></i> 拖曳太空人</span> <span>移動 + 噴射飛行</span></li>
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-globe mr-1"></i> 點擊下方星球</span> <span>查看資訊與抵達</span></li>
@@ -431,7 +482,6 @@
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-star mr-1"></i> 點擊星星</span> <span>自動飛行蒐集</span></li>
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-hand-paper mr-1"></i> 拖曳背景</span> <span>旋轉視角</span></li>
         `;
-
         const contentDesktop = `
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-mouse-pointer mr-1"></i> 左鍵拖曳</span> <span>移動太空人</span></li>
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-mouse-pointer mr-1"></i> 右鍵 / 按鈕</span> <span>旋轉太空人</span></li>
@@ -439,55 +489,51 @@
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-star mr-1"></i> 點擊星星</span> <span>自動飛行蒐集</span></li>
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-hand-paper mr-1"></i> 拖曳背景</span> <span>旋轉視角</span></li>
         `;
-
         instList.innerHTML = contentMobile;
+        tabMobile.addEventListener('click', () => { tabMobile.classList.add('active'); tabDesktop.classList.remove('active'); instList.innerHTML = contentMobile; });
+        tabDesktop.addEventListener('click', () => { tabDesktop.classList.add('active'); tabMobile.classList.remove('active'); instList.innerHTML = contentDesktop; });
 
-        tabMobile.addEventListener('click', () => {
-            tabMobile.classList.add('active');
-            tabDesktop.classList.remove('active');
-            instList.innerHTML = contentMobile;
+        const restartBtn = document.getElementById('restartBtn');
+        const scoreText = document.getElementById('scoreText');
+        restartBtn.addEventListener('click', () => {
+            score = 0;
+            scoreText.innerText = `ENERGY: 0 / ${totalStars}`;
+            createStars();
+            if(astronaut) {
+                new TWEEN.Tween(astronaut.rotation)
+                    .to({ x: 0, y: -Math.PI/4, z: 0 }, 1000)
+                    .easing(TWEEN.Easing.Cubic.Out)
+                    .start();
+            }
         });
 
-        tabDesktop.addEventListener('click', () => {
-            tabDesktop.classList.add('active');
-            tabMobile.classList.remove('active');
-            instList.innerHTML = contentDesktop;
-        });
-
-        // 互動控制
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-        
         let isMovingAstronaut = false;   
         let isRotatingAstronaut = false; 
+        let isAutoFlying = false;
         let dragOffset = new THREE.Vector3();
         let previousMouseX = 0;
         let targetPosition = new THREE.Vector3();
-        
-        // 手機點擊判定
         let touchStartX = 0;
         let touchStartY = 0;
 
         window.addEventListener('mousedown', onPointerDown);
         window.addEventListener('mousemove', onPointerMove);
         window.addEventListener('mouseup', onPointerUp);
-        
         window.addEventListener('touchstart', onTouchStart, {passive: false});
         window.addEventListener('touchmove', onPointerMove, {passive: false});
         window.addEventListener('touchend', onTouchEnd);
 
-        // UI按鈕旋轉
         const rotLeftBtn = document.getElementById('rotLeftBtn');
         const rotRightBtn = document.getElementById('rotRightBtn');
         let rotateInterval;
-
         function startRotating(direction) {
             if(!astronaut) return;
             clearInterval(rotateInterval);
             rotateInterval = setInterval(() => { astronaut.rotation.y += direction * 0.05; }, 16);
         }
         function stopRotating() { clearInterval(rotateInterval); }
-
         rotLeftBtn.addEventListener('mousedown', () => startRotating(1));
         rotLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRotating(1); });
         rotRightBtn.addEventListener('mousedown', () => startRotating(-1));
@@ -495,28 +541,29 @@
         window.addEventListener('mouseup', stopRotating);
         window.addEventListener('touchend', stopRotating);
 
-        // 統一處理場景點擊
         function handleSceneClick(pointerX, pointerY) {
             mouse.x = (pointerX / window.innerWidth) * 2 - 1;
             mouse.y = -(pointerY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
 
-            // 1. 檢測星星
             const starIntersects = raycaster.intersectObjects(stars);
             if (starIntersects.length > 0) {
                 const targetStar = starIntersects[0].object;
                 new TWEEN.Tween(astronaut.position)
                     .to({ x: targetStar.position.x, y: targetStar.position.y, z: targetStar.position.z + 1.0 }, 1500)
                     .easing(TWEEN.Easing.Cubic.Out)
+                    .onStart(() => { isAutoFlying = true; })
+                    .onComplete(() => { isAutoFlying = false; })
                     .start();
-                astronaut.lookAt(targetStar.position);
+                
+                const targetLook = targetStar.position.clone();
+                targetLook.y = astronaut.position.y;
+                astronaut.lookAt(targetLook);
                 return; 
             }
 
-            // 2. 檢測星球
             const validPlanets = planetMeshes.filter(m => m !== undefined);
             const intersects = raycaster.intersectObjects(validPlanets, true);
-
             if (intersects.length > 0) {
                 let target = intersects[0].object;
                 while(target) {
@@ -531,24 +578,12 @@
             }
         }
 
-        function onTouchStart(event) {
-            if(event.touches.length > 0) {
-                touchStartX = event.touches[0].clientX;
-                touchStartY = event.touches[0].clientY;
-                onPointerDown(event); 
-            }
-        }
-
+        function onTouchStart(event) { if(event.touches.length > 0) { touchStartX = event.touches[0].clientX; touchStartY = event.touches[0].clientY; onPointerDown(event); } }
         function onTouchEnd(event) {
             const touchEndX = event.changedTouches[0].clientX;
             const touchEndY = event.changedTouches[0].clientY;
-            
             const dist = Math.sqrt(Math.pow(touchEndX - touchStartX, 2) + Math.pow(touchEndY - touchStartY, 2));
-            
-            if (dist < 5) {
-                handleSceneClick(touchEndX, touchEndY);
-            }
-
+            if (dist < 5) { handleSceneClick(touchEndX, touchEndY); }
             onPointerUp(event); 
         }
 
@@ -556,7 +591,6 @@
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
             const isRightClick = (event.button === 2);
-
             mouse.x = (clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
@@ -565,22 +599,15 @@
                 const intersects = raycaster.intersectObject(astronaut, true);
                 if (intersects.length > 0) {
                     controls.enabled = false; 
-                    
                     if (isRightClick) {
-                        isRotatingAstronaut = true;
-                        previousMouseX = clientX;
-                        document.body.style.cursor = 'alias'; 
+                        isRotatingAstronaut = true; previousMouseX = clientX; document.body.style.cursor = 'alias'; 
                     } else {
-                        isMovingAstronaut = true;
-                        document.body.style.cursor = 'grabbing';
-                        
+                        isMovingAstronaut = true; document.body.style.cursor = 'grabbing';
                         targetPosition.copy(astronaut.position);
-
                         const currentZ = astronaut.position.z;
                         const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -currentZ);
                         const intersectPoint = new THREE.Vector3();
                         raycaster.ray.intersectPlane(dragPlane, intersectPoint);
-                        
                         if (intersectPoint) { dragOffset.subVectors(astronaut.position, intersectPoint); }
                     }
                     return; 
@@ -591,7 +618,6 @@
         function onPointerMove(event) {
             if (!isMovingAstronaut && !isRotatingAstronaut) return;
             if (event.preventDefault) event.preventDefault();
-
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
 
@@ -601,19 +627,15 @@
                 previousMouseX = clientX;
                 return;
             }
-
             if (isMovingAstronaut && astronaut) {
                 mouse.x = (clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(clientY / window.innerHeight) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
-
                 const currentPlanetZ = planetsData[currentPlanetIndex].zOffset;
                 const targetZ = currentPlanetZ + 3.0; 
-                
                 const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
                 const point = new THREE.Vector3();
                 raycaster.ray.intersectPlane(dragPlane, point);
-
                 if (point) {
                     const newX = point.x + dragOffset.x;
                     const newY = point.y + dragOffset.y;
@@ -624,46 +646,34 @@
 
         function onPointerUp(event) {
             if (isMovingAstronaut || isRotatingAstronaut) {
-                isMovingAstronaut = false;
-                isRotatingAstronaut = false;
-                controls.enabled = true;
-                document.body.style.cursor = 'default';
+                isMovingAstronaut = false; isRotatingAstronaut = false; controls.enabled = true; document.body.style.cursor = 'default';
             }
         }
 
-        window.addEventListener('click', (event) => {
-            if(isMovingAstronaut || isRotatingAstronaut) return;
-            handleSceneClick(event.clientX, event.clientY);
-        });
+        window.addEventListener('click', (event) => { if(isMovingAstronaut || isRotatingAstronaut) return; handleSceneClick(event.clientX, event.clientY); });
 
-        // [修改] flyToPlanet 視野優化
         function flyToPlanet(index) {
             currentPlanetIndex = index;
             if (!planetMeshes[index]) return;
-            
             const targetPlanet = planetMeshes[index];
             const data = planetsData[index];
             toggleModal(false);
-
-            if (astronaut) {
-                astronaut.position.set(data.pos + 16, -2.0, data.zOffset + 2.0);
+            if (astronaut) { 
+                astronaut.position.set(data.pos + 16, -2.0, data.zOffset + 2.0); 
                 astronaut.rotation.y = -Math.PI / 4;
+                astronaut.rotation.x = 0; // 重置垂直角度
+                astronaut.rotation.z = 0; // 重置滾轉角度
             }
-
-            // 判斷是否為手機，若是則退後視野
             const isMobile = window.innerWidth < 768;
             const distFactor = isMobile ? 7.5 : 4.0;
             const dist = distFactor * data.modelScale; 
             const offsetX = 0.8 * data.modelScale;
             const targetPos = { x: targetPlanet.position.x + offsetX, y: data.modelScale * 0.2, z: targetPlanet.position.z + dist };
-            
             new TWEEN.Tween(camera.position).to(targetPos, 2500).easing(TWEEN.Easing.Cubic.InOut)
                 .onUpdate(() => controls.target.set(targetPlanet.position.x, 0, targetPlanet.position.z))
                 .onComplete(() => { updateModalContent(index); toggleModal(true); controls.minDistance = data.modelScale * 1.5; })
                 .start();
-
-            new TWEEN.Tween(controls.target).to({ x: targetPlanet.position.x, y: 0, z: targetPlanet.position.z }, 2500)
-                .easing(TWEEN.Easing.Cubic.InOut).start();
+            new TWEEN.Tween(controls.target).to({ x: targetPlanet.position.x, y: 0, z: targetPlanet.position.z }, 2500).easing(TWEEN.Easing.Cubic.InOut).start();
         }
 
         const modal = document.getElementById('infoModal');
@@ -672,19 +682,9 @@
         const instBox = document.getElementById('instBox');
         const closeInstBtn = document.getElementById('closeInstBtn');
         const helpBtn = document.getElementById('helpBtn');
-        const scoreText = document.getElementById('scoreText');
 
-        closeInstBtn.addEventListener('click', () => {
-            instBox.style.opacity = '0';
-            instBox.style.pointerEvents = 'none';
-            setTimeout(() => { helpBtn.classList.add('visible'); }, 300);
-        });
-
-        helpBtn.addEventListener('click', () => {
-            instBox.style.opacity = '1';
-            instBox.style.pointerEvents = 'auto'; 
-            helpBtn.classList.remove('visible');
-        });
+        closeInstBtn.addEventListener('click', () => { instBox.style.opacity = '0'; instBox.style.pointerEvents = 'none'; setTimeout(() => { helpBtn.classList.add('visible'); }, 300); });
+        helpBtn.addEventListener('click', () => { instBox.style.opacity = '1'; instBox.style.pointerEvents = 'auto'; helpBtn.classList.remove('visible'); });
 
         function updateModalContent(index) {
             const data = planetsData[index];
@@ -697,15 +697,9 @@
         }
 
         function toggleModal(show) {
-            if(show) {
-                modal.classList.remove('opacity-0', 'translate-x-[-40px]', 'pointer-events-none');
-                modal.classList.add('opacity-100', 'translate-x-0', 'pointer-events-auto');
-            } else {
-                modal.classList.add('opacity-0', 'translate-x-[-40px]', 'pointer-events-none');
-                modal.classList.remove('opacity-100', 'translate-x-0', 'pointer-events-auto');
-            }
+            if(show) { modal.classList.remove('opacity-0', 'translate-x-[-40px]', 'pointer-events-none'); modal.classList.add('opacity-100', 'translate-x-0', 'pointer-events-auto');
+            } else { modal.classList.add('opacity-0', 'translate-x-[-40px]', 'pointer-events-none'); modal.classList.remove('opacity-100', 'translate-x-0', 'pointer-events-auto'); }
         }
-
         closeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleModal(false); });
 
         planetsData.forEach((p, i) => {
@@ -720,16 +714,11 @@
             menuContainer.appendChild(btn);
         });
 
-        // [修改] 初始相機視野設定
         const startIndex = 2; 
         const isMobile = window.innerWidth < 768;
-        // 手機預設退後一點 (250)，電腦維持 (150)
         const initialZ = isMobile ? 250 : 150;
         camera.position.set(0, 40, initialZ); 
-        
-        setTimeout(() => {
-            menuContainer.children[startIndex].click();
-        }, 2000);
+        setTimeout(() => { menuContainer.children[startIndex].click(); }, 2000);
 
         const clock = new THREE.Clock();
 
@@ -737,23 +726,21 @@
             requestAnimationFrame(animate);
             TWEEN.update(time);
             controls.update();
-            planetMeshes.forEach(m => { if(m) m.rotation.y += 0.001; }); 
+            planetMeshes.forEach(m => { if(m) m.rotation.y += 0.005; }); 
             if (mixer) mixer.update(clock.getDelta());
 
-            // 粒子特效修復
-            if (isMovingAstronaut && astronaut) {
+            if ((isMovingAstronaut || isAutoFlying) && astronaut) {
                 createTrailParticle();
-                astronaut.position.lerp(targetPosition, 0.1);
+                if (isMovingAstronaut) { astronaut.position.lerp(targetPosition, 0.1); }
             }
             updateParticles();
             
             if(astronaut) {
                 for (let i = stars.length - 1; i >= 0; i--) {
                     const star = stars[i];
-                    star.rotation.y += 0.02;
-                    star.rotation.x += 0.01;
-                    
+                    star.rotation.y += 0.02; star.rotation.x += 0.01;
                     if (astronaut.position.distanceTo(star.position) < 8.0) { 
+                        createStarExplosion(star.position);
                         scene.remove(star);
                         stars.splice(i, 1);
                         score++;
@@ -761,7 +748,6 @@
                     }
                 }
             }
-
             renderer.render(scene, camera);
         }
         animate();
