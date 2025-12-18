@@ -38,6 +38,34 @@
         }
         .instruction-box button { pointer-events: auto; }
 
+        /* 音效提示視窗樣式 */
+        .sound-toast {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(79, 172, 254, 0.9);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 20px rgba(79, 172, 254, 0.4);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(8px);
+            opacity: 1;
+            transition: opacity 1s ease, transform 1s ease;
+            pointer-events: none;
+        }
+        .sound-toast.fade-out {
+            opacity: 0;
+            transform: translate(-50%, -20px);
+        }
+
         .tab-container {
             display: flex;
             border-bottom: 1px solid rgba(255,255,255,0.2);
@@ -177,6 +205,10 @@
         <div class="text-blue-200 text-xs tracking-[0.5em] font-light animate-pulse">LOADING UNIVERSE</div>
     </div>
 
+    <div id="soundToast" class="sound-toast">
+        <i class="fas fa-volume-up"></i> 建議開啟聲音體驗更佳
+    </div>
+
     <div id="canvas-container"></div>
 
     <button id="helpBtn" class="help-btn">
@@ -257,6 +289,46 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+        // ==========================================
+        // 0. 音效系統 (音量調整版)
+        // ==========================================
+        const bgm = new Audio('bgm.mp3');
+        bgm.loop = true;
+        bgm.volume = 0.6; // [修改] 0.4 -> 0.6 (大聲一點)
+
+        const sfxJetpack = new Audio('jetpack.mp3');
+        sfxJetpack.loop = true; 
+        sfxJetpack.volume = 0.8; // [修改] 0.5 -> 0.8 (大聲一點)
+
+        // [修改] 播放函式支援音量參數
+        function playSound(filename, volume = 0.5) {
+            const sfx = new Audio(filename);
+            sfx.volume = volume;
+            sfx.play().catch(e => {}); 
+        }
+
+        function initAudioContext() {
+            bgm.play().catch(e => {
+                window.addEventListener('click', () => bgm.play(), { once: true });
+                window.addEventListener('touchstart', () => bgm.play(), { once: true });
+            });
+        }
+        window.addEventListener('click', initAudioContext, { once: true });
+        window.addEventListener('touchstart', initAudioContext, { once: true });
+
+        // [修改] 3秒後淡出音效提示 (5000 -> 3000)
+        window.addEventListener('load', () => {
+            const toast = document.getElementById('soundToast');
+            if(toast) {
+                setTimeout(() => {
+                    toast.classList.add('fade-out');
+                    setTimeout(() => {
+                        if(toast.parentNode) toast.parentNode.removeChild(toast);
+                    }, 1000); 
+                }, 3000); // 3秒
+            }
+        });
 
         // 1. 資料設定
         const planetsData = [
@@ -471,7 +543,6 @@
             }
         );
 
-        // UI Logic
         const instList = document.getElementById('instList');
         const tabMobile = document.getElementById('tabMobile');
         const tabDesktop = document.getElementById('tabDesktop');
@@ -492,12 +563,13 @@
             <li class="flex items-center"><span class="key-badge"><i class="fas fa-mouse mr-1"></i> 滑鼠滾輪</span> <span>調整畫面遠近</span></li>
         `;
         instList.innerHTML = contentMobile;
-        tabMobile.addEventListener('click', () => { tabMobile.classList.add('active'); tabDesktop.classList.remove('active'); instList.innerHTML = contentMobile; });
-        tabDesktop.addEventListener('click', () => { tabDesktop.classList.add('active'); tabMobile.classList.remove('active'); instList.innerHTML = contentDesktop; });
+        tabMobile.addEventListener('click', () => { tabMobile.classList.add('active'); tabDesktop.classList.remove('active'); instList.innerHTML = contentMobile; playSound('click.mp3', 0.3); });
+        tabDesktop.addEventListener('click', () => { tabDesktop.classList.add('active'); tabMobile.classList.remove('active'); instList.innerHTML = contentDesktop; playSound('click.mp3', 0.3); });
 
         const restartBtn = document.getElementById('restartBtn');
         const scoreText = document.getElementById('scoreText');
         restartBtn.addEventListener('click', () => {
+            playSound('click.mp3', 0.3);
             score = 0;
             scoreText.innerText = `ENERGY: 0 / ${totalStars}`;
             createStars();
@@ -532,6 +604,7 @@
         let rotateInterval;
         function startRotating(direction) {
             if(!astronaut) return;
+            playSound('click.mp3', 0.3);
             clearInterval(rotateInterval);
             rotateInterval = setInterval(() => { astronaut.rotation.y += direction * 0.05; }, 16);
         }
@@ -551,7 +624,6 @@
             const starIntersects = raycaster.intersectObjects(stars);
             if (starIntersects.length > 0) {
                 const targetStar = starIntersects[0].object;
-                
                 new TWEEN.Tween(astronaut.position)
                     .to({ x: targetStar.position.x, y: targetStar.position.y, z: targetStar.position.z + 1.0 }, 1500)
                     .easing(TWEEN.Easing.Cubic.Out)
@@ -571,6 +643,7 @@
                 let target = intersects[0].object;
                 while(target) {
                     if (target.userData && target.userData.isPlanet) {
+                        playSound('click.mp3', 0.3);
                         flyToPlanet(target.userData.index);
                         document.querySelectorAll('.planet-btn').forEach(b => b.classList.remove('active'));
                         menuContainer.children[target.userData.index].classList.add('active');
@@ -686,8 +759,14 @@
         const closeInstBtn = document.getElementById('closeInstBtn');
         const helpBtn = document.getElementById('helpBtn');
 
-        closeInstBtn.addEventListener('click', () => { instBox.style.opacity = '0'; instBox.style.pointerEvents = 'none'; setTimeout(() => { helpBtn.classList.add('visible'); }, 300); });
-        helpBtn.addEventListener('click', () => { instBox.style.opacity = '1'; instBox.style.pointerEvents = 'auto'; helpBtn.classList.remove('visible'); });
+        closeInstBtn.addEventListener('click', () => { 
+            instBox.style.opacity = '0'; instBox.style.pointerEvents = 'none'; setTimeout(() => { helpBtn.classList.add('visible'); }, 300); 
+            playSound('click.mp3', 0.3);
+        });
+        helpBtn.addEventListener('click', () => { 
+            instBox.style.opacity = '1'; instBox.style.pointerEvents = 'auto'; helpBtn.classList.remove('visible'); 
+            playSound('click.mp3', 0.3);
+        });
 
         function updateModalContent(index) {
             const data = planetsData[index];
@@ -703,7 +782,10 @@
             if(show) { modal.classList.remove('opacity-0', 'translate-x-[-40px]', 'pointer-events-none'); modal.classList.add('opacity-100', 'translate-x-0', 'pointer-events-auto');
             } else { modal.classList.add('opacity-0', 'translate-x-[-40px]', 'pointer-events-none'); modal.classList.remove('opacity-100', 'translate-x-0', 'pointer-events-auto'); }
         }
-        closeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleModal(false); });
+        closeBtn.addEventListener('click', (e) => { 
+            e.stopPropagation(); toggleModal(false); 
+            playSound('click.mp3', 0.3);
+        });
 
         planetsData.forEach((p, i) => {
             const btn = document.createElement('div');
@@ -712,6 +794,7 @@
             btn.onclick = () => {
                 document.querySelectorAll('.planet-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                playSound('click.mp3', 0.3);
                 flyToPlanet(i);
             };
             menuContainer.appendChild(btn);
@@ -734,7 +817,16 @@
 
             if ((isMovingAstronaut || isAutoFlying) && astronaut) {
                 createTrailParticle();
+                // 只有移動中才播放噴射音效
+                if(sfxJetpack.paused) sfxJetpack.play().catch(e=>{});
+                
                 if (isMovingAstronaut) { astronaut.position.lerp(targetPosition, 0.1); }
+            } else {
+                // 停止移動時暫停噴射音效
+                if(!sfxJetpack.paused) {
+                    sfxJetpack.pause();
+                    sfxJetpack.currentTime = 0;
+                }
             }
             updateParticles();
             
@@ -744,6 +836,7 @@
                     star.rotation.y += 0.02; star.rotation.x += 0.01;
                     if (astronaut.position.distanceTo(star.position) < 8.0) { 
                         createStarExplosion(star.position);
+                        playSound('star.mp3', 0.4); // [修改] 0.6 -> 0.4
                         scene.remove(star);
                         stars.splice(i, 1);
                         score++;
