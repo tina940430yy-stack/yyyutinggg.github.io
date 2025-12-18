@@ -40,154 +40,74 @@
 
         /* 音效提示視窗樣式 */
         .sound-toast {
-            position: fixed;
-            top: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(79, 172, 254, 0.9);
-            color: #fff;
-            padding: 10px 24px;
-            border-radius: 50px;
-            font-size: 16px;
-            font-weight: bold;
-            box-shadow: 0 4px 20px rgba(79, 172, 254, 0.4);
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            backdrop-filter: blur(8px);
-            opacity: 1;
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(79, 172, 254, 0.9); color: #fff; padding: 10px 24px;
+            border-radius: 50px; font-size: 16px; font-weight: bold;
+            box-shadow: 0 4px 20px rgba(79, 172, 254, 0.4); z-index: 2000;
+            display: flex; align-items: center; gap: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.4); backdrop-filter: blur(8px);
+            opacity: 0; pointer-events: none; /* 預設隱藏，開始後才顯示 */
             transition: opacity 1s ease, transform 1s ease;
-            pointer-events: none;
         }
-        .sound-toast.fade-out {
-            opacity: 0;
-            transform: translate(-50%, -20px);
-        }
+        .sound-toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .sound-toast.fade-out { opacity: 0; transform: translate(-50%, -20px); }
 
-        .tab-container {
-            display: flex;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            gap: 15px;
-        }
-        .tab-btn {
-            font-size: 14px;
-            font-weight: bold;
-            color: rgba(255,255,255,0.5);
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex; align-items: center; gap: 6px;
-            padding: 4px 8px;
-            border-radius: 6px;
-        }
+        .tab-container { display: flex; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px; padding-bottom: 8px; gap: 15px; }
+        .tab-btn { font-size: 14px; font-weight: bold; color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; }
         .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
-        .tab-btn.active { 
-            color: #4facfe; 
-            background: rgba(79, 172, 254, 0.15);
-            border: 1px solid rgba(79, 172, 254, 0.3);
-        }
+        .tab-btn.active { color: #4facfe; background: rgba(79, 172, 254, 0.15); border: 1px solid rgba(79, 172, 254, 0.3); }
         
-        .score-board {
-            margin-top: 12px;
-            display: inline-flex;
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid #ffd700;
-            border-radius: 50px;
-            padding: 6px 20px;
-            color: #ffd700;
-            font-family: 'Impact', sans-serif;
-            font-size: 20px;
-            letter-spacing: 2px;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-            align-items: center; 
-            gap: 10px;
-            pointer-events: auto;
-        }
+        .score-board { margin-top: 12px; display: inline-flex; background: rgba(0, 0, 0, 0.6); border: 2px solid #ffd700; border-radius: 50px; padding: 6px 20px; color: #ffd700; font-family: 'Impact', sans-serif; font-size: 20px; letter-spacing: 2px; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); align-items: center; gap: 10px; pointer-events: auto; }
+        .key-badge { display: inline-flex; align-items: center; justify-content: center; background: rgba(79, 172, 254, 0.3); border: 1px solid rgba(79, 172, 254, 0.6); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: bold; color: #e0f0ff; min-width: 90px; margin-right: 8px; }
 
-        .key-badge {
-            display: inline-flex; align-items: center; justify-content: center;
-            background: rgba(79, 172, 254, 0.3);
-            border: 1px solid rgba(79, 172, 254, 0.6);
-            border-radius: 6px; padding: 4px 8px;
-            font-size: 11px; font-weight: bold; color: #e0f0ff;
-            min-width: 90px;
-            margin-right: 8px;
-        }
-
-        .help-btn {
-            position: absolute; top: 20px; right: 20px;
-            width: 36px; height: 36px; border-radius: 50%;
-            background: rgba(20, 30, 50, 0.8); border: 1px solid rgba(255, 255, 255, 0.4);
-            color: #4facfe; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.3s;
-            z-index: 60; pointer-events: auto;
-            opacity: 0; pointer-events: none;
-        }
+        .help-btn { position: absolute; top: 20px; right: 20px; width: 36px; height: 36px; border-radius: 50%; background: rgba(20, 30, 50, 0.8); border: 1px solid rgba(255, 255, 255, 0.4); color: #4facfe; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; z-index: 60; pointer-events: auto; opacity: 0; pointer-events: none; }
         .help-btn.visible { opacity: 1; pointer-events: auto; }
         .help-btn:hover { background: rgba(79, 172, 254, 0.4); border-color: #fff; }
 
-        .rotate-controls {
-            position: absolute; bottom: 140px; right: 20px;
-            display: flex; gap: 10px; z-index: 50;
-            pointer-events: auto;
-        }
-        .rotate-btn {
-            width: 50px; height: 50px; border-radius: 50%;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(79, 172, 254, 0.5);
-            color: #fff; font-size: 18px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.2s;
-            backdrop-filter: blur(4px);
-        }
+        .rotate-controls { position: absolute; bottom: 140px; right: 20px; display: flex; gap: 10px; z-index: 50; pointer-events: auto; }
+        .rotate-btn { width: 50px; height: 50px; border-radius: 50%; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(79, 172, 254, 0.5); color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px); }
         .rotate-btn:active { background: rgba(79, 172, 254, 0.4); transform: scale(0.95); }
 
-        .restart-btn {
-            margin-top: 15px; 
-            padding: 8px 20px;
-            border-radius: 30px; 
-            background: rgba(255, 215, 0, 0.2);
-            border: 1px solid rgba(255, 215, 0, 0.8);
-            color: #ffd700; 
-            font-size: 16px;
-            font-weight: bold;
-            display: flex; align-items: center; justify-content: center; 
-            gap: 8px; 
-            cursor: pointer; transition: all 0.2s;
-            backdrop-filter: blur(4px);
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-            width: fit-content; 
-            pointer-events: auto;
-        }
+        .restart-btn { margin-top: 15px; padding: 8px 20px; border-radius: 30px; background: rgba(255, 215, 0, 0.2); border: 1px solid rgba(255, 215, 0, 0.8); color: #ffd700; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px); box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); width: fit-content; pointer-events: auto; }
         .restart-btn:hover { background: rgba(255, 215, 0, 0.3); }
         .restart-btn:active { transform: scale(0.95); background: rgba(255, 215, 0, 0.4); }
 
-        .planet-btn {
-            width: 60px; height: 60px; border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.3);
-            background-size: cover; background-position: center;
-            background-repeat: no-repeat;
-            transition: all 0.4s; cursor: pointer; flex-shrink: 0; position: relative; 
-            background-color: #111; 
-            background-blend-mode: screen; 
-        }
-        .planet-btn.active {
-            transform: scale(1.3) translateY(-10px);
-            border-color: #4facfe;
-            box-shadow: 0 0 35px rgba(79, 172, 254, 1.0);
-            z-index: 20;
-            background-color: #333;
-        }
+        .planet-btn { width: 60px; height: 60px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background-size: cover; background-position: center; background-repeat: no-repeat; transition: all 0.4s; cursor: pointer; flex-shrink: 0; position: relative; background-color: #111; background-blend-mode: screen; }
+        .planet-btn.active { transform: scale(1.3) translateY(-10px); border-color: #4facfe; box-shadow: 0 0 35px rgba(79, 172, 254, 1.0); z-index: 20; background-color: #333; }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        #loader {
-            position: fixed; inset: 0; background: #050510; z-index: 999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            transition: opacity 1s ease-out;
+        /* [修改] Loader 樣式，增加開始按鈕 */
+        #loader { position: fixed; inset: 0; background: #050510; z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s ease-out; }
+        
+        #loadingSpinner { transition: opacity 0.3s; }
+        
+        /* 開始按鈕 (預設隱藏) */
+        #startBtn {
+            display: none;
+            padding: 15px 40px;
+            background: transparent;
+            border: 2px solid #4facfe;
+            color: #4facfe;
+            font-family: 'Impact', sans-serif;
+            font-size: 24px;
+            letter-spacing: 4px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(79, 172, 254, 0.2);
+            text-transform: uppercase;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        #startBtn:hover {
+            background: #4facfe;
+            color: #000;
+            box-shadow: 0 0 40px rgba(79, 172, 254, 0.6);
+        }
+        #startBtn.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
         
         .cursor-grab { cursor: grab; }
@@ -198,11 +118,14 @@
 <body oncontextmenu="return false;">
 
     <div id="loader">
-        <div class="relative w-24 h-24 mb-6">
-            <div class="absolute inset-0 border-4 border-blue-900/30 rounded-full"></div>
-            <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+        <div id="loadingSpinner">
+            <div class="relative w-24 h-24 mb-6 mx-auto">
+                <div class="absolute inset-0 border-4 border-blue-900/30 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <div class="text-blue-200 text-xs tracking-[0.5em] font-light animate-pulse text-center">LOADING UNIVERSE</div>
         </div>
-        <div class="text-blue-200 text-xs tracking-[0.5em] font-light animate-pulse">LOADING UNIVERSE</div>
+        <button id="startBtn">Click to Start</button>
     </div>
 
     <div id="soundToast" class="sound-toast">
@@ -291,44 +214,52 @@
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
         // ==========================================
-        // 0. 音效系統 (音量調整版)
+        // 0. 音效系統 (包含 Preload)
         // ==========================================
         const bgm = new Audio('bgm.mp3');
         bgm.loop = true;
-        bgm.volume = 0.6; // [修改] 0.4 -> 0.6 (大聲一點)
+        bgm.volume = 0.6; 
+        bgm.preload = 'auto'; // [修改] 預加載
 
         const sfxJetpack = new Audio('jetpack.mp3');
         sfxJetpack.loop = true; 
-        sfxJetpack.volume = 0.8; // [修改] 0.5 -> 0.8 (大聲一點)
+        sfxJetpack.volume = 0.8; 
+        sfxJetpack.preload = 'auto';
 
-        // [修改] 播放函式支援音量參數
         function playSound(filename, volume = 0.5) {
             const sfx = new Audio(filename);
             sfx.volume = volume;
             sfx.play().catch(e => {}); 
         }
 
-        function initAudioContext() {
-            bgm.play().catch(e => {
-                window.addEventListener('click', () => bgm.play(), { once: true });
-                window.addEventListener('touchstart', () => bgm.play(), { once: true });
-            });
-        }
-        window.addEventListener('click', initAudioContext, { once: true });
-        window.addEventListener('touchstart', initAudioContext, { once: true });
+        // [修改] 啟動遊戲與音樂
+        function startGame() {
+            // 播放音樂
+            bgm.play().catch(e => console.log("BGM Autoplay prevented"));
+            
+            // 隱藏 Loader
+            const loader = document.getElementById('loader');
+            loader.style.opacity = '0';
+            setTimeout(() => { loader.style.display = 'none'; }, 1000);
 
-        // [修改] 3秒後淡出音效提示 (5000 -> 3000)
-        window.addEventListener('load', () => {
+            // 顯示音效提示
             const toast = document.getElementById('soundToast');
             if(toast) {
+                toast.classList.add('show');
+                // 3秒後淡出
                 setTimeout(() => {
                     toast.classList.add('fade-out');
-                    setTimeout(() => {
-                        if(toast.parentNode) toast.parentNode.removeChild(toast);
-                    }, 1000); 
-                }, 3000); // 3秒
+                    setTimeout(() => { if(toast.parentNode) toast.parentNode.removeChild(toast); }, 1000); 
+                }, 3000);
             }
-        });
+        }
+
+        // 綁定 Start 按鈕
+        const startBtn = document.getElementById('startBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        
+        startBtn.addEventListener('click', startGame);
+        startBtn.addEventListener('touchstart', startGame);
 
         // 1. 資料設定
         const planetsData = [
@@ -528,7 +459,11 @@
                     action.play();
                 }
                 scene.add(astronaut);
-                document.getElementById('loader').style.display = 'none';
+                
+                // [修改] 隱藏 Loading Spinner，顯示 Start 按鈕
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('startBtn').style.display = 'block';
+                setTimeout(() => { document.getElementById('startBtn').classList.add('visible'); }, 50);
             },
             (xhr) => {},
             (error) => {
@@ -539,7 +474,9 @@
                 astronaut = new THREE.Mesh(geo, mat);
                 astronaut.position.set(50, -1.5, 10);
                 scene.add(astronaut);
-                document.getElementById('loader').style.display = 'none';
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('startBtn').style.display = 'block';
+                setTimeout(() => { document.getElementById('startBtn').classList.add('visible'); }, 50);
             }
         );
 
