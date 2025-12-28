@@ -52,7 +52,7 @@
         .sound-toast.show { opacity: 1; transform: translate(-50%, 0); }
         .sound-toast.fade-out { opacity: 0; transform: translate(-50%, -20px); }
 
-        /* [新增] 勝利結算視窗樣式 */
+        /* 勝利結算視窗樣式 */
         .success-modal {
             position: fixed;
             top: 50%; left: 50%;
@@ -89,7 +89,13 @@
         }
 
         .tab-container { display: flex; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 12px; padding-bottom: 8px; gap: 15px; }
-        .tab-btn { font-size: 14px; font-weight: bold; color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; }
+        
+        /* [修正] 在這裡加入了 pointer-events: auto; 讓標籤一開始就能被點擊 */
+        .tab-btn { 
+            font-size: 14px; font-weight: bold; color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; 
+            pointer-events: auto; 
+        }
+        
         .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
         .tab-btn.active { color: #4facfe; background: rgba(79, 172, 254, 0.15); border: 1px solid rgba(79, 172, 254, 0.3); }
         
